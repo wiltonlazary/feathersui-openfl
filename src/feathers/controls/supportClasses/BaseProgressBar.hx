@@ -8,14 +8,14 @@
 
 package feathers.controls.supportClasses;
 
-import openfl.events.Event;
-import feathers.events.FeathersEvent;
-import openfl.errors.TypeError;
-import feathers.core.IUIControl;
-import feathers.core.InvalidationFlag;
-import feathers.layout.Measurements;
-import openfl.display.DisplayObject;
 import feathers.core.FeathersControl;
+import feathers.core.IUIControl;
+import feathers.events.FeathersEvent;
+import feathers.layout.Measurements;
+import feathers.skins.IProgrammaticSkin;
+import openfl.display.DisplayObject;
+import openfl.errors.TypeError;
+import openfl.events.Event;
 
 /**
 	Base class for progress bar components.
@@ -25,10 +25,13 @@ import feathers.core.FeathersControl;
 
 	@since 1.0.0
 **/
-class BaseProgressBar extends FeathersControl {
+@:event(openfl.events.Event.CHANGE)
+class BaseProgressBar extends FeathersControl implements IRange {
 	private function new() {
 		super();
 	}
+
+	private var _value:Float = 0.0;
 
 	/**
 		The value of the progress bar, which must be between the `minimum` and
@@ -53,17 +56,24 @@ class BaseProgressBar extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	public var value(default, set):Float = 0.0;
+	@:flash.property
+	public var value(get, set):Float;
+
+	private function get_value():Float {
+		return this._value;
+	}
 
 	private function set_value(value:Float):Float {
-		if (this.value == value) {
-			return this.value;
+		if (this._value == value) {
+			return this._value;
 		}
-		this.value = value;
-		this.setInvalid(InvalidationFlag.DATA);
+		this._value = value;
+		this.setInvalid(DATA);
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.value;
+		return this._value;
 	}
+
+	private var _minimum:Float = 0.0;
 
 	/**
 		The progress bar's value cannot be smaller than the minimum.
@@ -83,19 +93,27 @@ class BaseProgressBar extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	public var minimum(default, set):Float = 0.0;
+	@:flash.property
+	public var minimum(get, set):Float;
+
+	private function get_minimum():Float {
+		return this._minimum;
+	}
 
 	private function set_minimum(value:Float):Float {
-		if (this.minimum == value) {
-			return this.minimum;
+		if (this._minimum == value) {
+			return this._minimum;
 		}
-		this.minimum = value;
-		if (this.initialized && this.value < this.minimum) {
-			this.value = this.minimum;
+		this._minimum = value;
+		if (this.initialized && this._value < this._minimum) {
+			// use the setter
+			this.value = this._minimum;
 		}
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.minimum;
+		this.setInvalid(DATA);
+		return this._minimum;
 	}
+
+	private var _maximum:Float = 1.0;
 
 	/**
 		The progress bar's value cannot be larger than the maximum.
@@ -115,18 +133,24 @@ class BaseProgressBar extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	public var maximum(default, set):Float = 1.0;
+	@:flash.property
+	public var maximum(get, set):Float;
+
+	private function get_maximum():Float {
+		return this._maximum;
+	}
 
 	private function set_maximum(value:Float):Float {
-		if (this.maximum == value) {
-			return this.maximum;
+		if (this._maximum == value) {
+			return this._maximum;
 		}
-		this.maximum = value;
-		if (this.initialized && this.value > this.maximum) {
-			this.value = this.maximum;
+		this._maximum = value;
+		if (this.initialized && this._value > this._maximum) {
+			// use the setter
+			this.value = this._maximum;
 		}
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.maximum;
+		this.setInvalid(DATA);
+		return this._maximum;
 	}
 
 	private var _backgroundSkinMeasurements:Measurements = null;
@@ -305,8 +329,8 @@ class BaseProgressBar extends FeathersControl {
 	public var paddingLeft:Float = 0.0;
 
 	override private function update():Void {
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
+		var stateInvalid = this.isInvalid(STATE);
 
 		if (stylesInvalid || stateInvalid) {
 			this.refreshBackgroundSkin();
@@ -340,11 +364,14 @@ class BaseProgressBar extends FeathersControl {
 		} else {
 			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
 		}
+		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
+			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
+		}
 		this.addChildAt(this._currentBackgroundSkin, 0);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		if (!this.enabled && this.disabledBackgroundSkin != null) {
+		if (!this._enabled && this.disabledBackgroundSkin != null) {
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
@@ -354,10 +381,13 @@ class BaseProgressBar extends FeathersControl {
 		if (skin == null) {
 			return;
 		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = null;
+		}
+		// we need to restore these values so that they won't be lost the
+		// next time that this skin is used for measurement
 		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
-			// we need to restore these values so that they won't be lost the
-			// next time that this skin is used for measurement
 			this.removeChild(skin);
 		}
 	}
@@ -381,11 +411,14 @@ class BaseProgressBar extends FeathersControl {
 		} else {
 			this._fillSkinMeasurements.save(this._currentFillSkin);
 		}
+		if (Std.is(this._currentFillSkin, IProgrammaticSkin)) {
+			cast(this._currentFillSkin, IProgrammaticSkin).uiContext = this;
+		}
 		this.addChild(this._currentFillSkin);
 	}
 
 	private function getCurrentFillSkin():DisplayObject {
-		if (!this.enabled && this.disabledFillSkin != null) {
+		if (!this._enabled && this.disabledFillSkin != null) {
 			return this.disabledFillSkin;
 		}
 		return this.fillSkin;
@@ -395,9 +428,12 @@ class BaseProgressBar extends FeathersControl {
 		if (skin == null) {
 			return;
 		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = null;
+		}
+		// we need to restore these values so that they won't be lost the
+		// next time that this skin is used for measurement
 		if (skin.parent == this) {
-			// we need to restore these values so that they won't be lost the
-			// next time that this skin is used for measurement
 			this.removeChild(skin);
 		}
 	}

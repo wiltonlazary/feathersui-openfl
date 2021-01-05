@@ -12,7 +12,9 @@ import feathers.controls.TabBar;
 import feathers.controls.ToggleButton;
 import feathers.controls.ToggleButtonState;
 import feathers.layout.HorizontalLayout;
+import feathers.skins.BaseGraphicsPathSkin;
 import feathers.skins.RectangleSkin;
+import feathers.skins.TabSkin;
 import feathers.style.Theme;
 import feathers.themes.steel.BaseSteelTheme;
 import feathers.utils.DeviceUtil;
@@ -46,11 +48,11 @@ class SteelTabBarStyles {
 					tabBar.backgroundSkin = skin;
 				}
 				if (tabBar.focusRectSkin == null) {
-					var skin = new RectangleSkin();
-					skin.fill = null;
-					skin.border = theme.getFocusBorder();
-					skin.cornerRadius = 6.0;
-					tabBar.focusRectSkin = skin;
+					var focusRectSkin = new RectangleSkin();
+					focusRectSkin.fill = null;
+					focusRectSkin.border = theme.getFocusBorder();
+					focusRectSkin.cornerRadius = 3.0;
+					tabBar.focusRectSkin = focusRectSkin;
 				}
 				if (tabBar.layout == null) {
 					var layout = new HorizontalLayout();
@@ -67,22 +69,29 @@ class SteelTabBarStyles {
 				var isDesktop = DeviceUtil.isDesktop();
 
 				if (button.backgroundSkin == null) {
-					var skin = new RectangleSkin();
+					var skin:BaseGraphicsPathSkin = null;
+					if (isDesktop) {
+						var desktopSkin = new TabSkin();
+						desktopSkin.cornerRadius = 3.0;
+						desktopSkin.cornerRadiusPosition = TOP;
+						desktopSkin.drawBaseBorder = false;
+						desktopSkin.maxWidth = 100.0;
+						desktopSkin.minWidth = 20.0;
+						skin = desktopSkin;
+					} else {
+						var mobileSkin = new RectangleSkin();
+						mobileSkin.minWidth = 44.0;
+						mobileSkin.minHeight = 44.0;
+						skin = mobileSkin;
+					}
 					skin.fill = theme.getButtonFill();
+					skin.disabledFill = theme.getButtonDisabledFill();
 					skin.selectedFill = theme.getThemeFill();
 					skin.setFillForState(ToggleButtonState.DOWN(false), theme.getReversedActiveThemeFill());
-					skin.setFillForState(ToggleButtonState.DISABLED(false), theme.getButtonDisabledFill());
 					skin.setFillForState(ToggleButtonState.DOWN(false), theme.getReversedActiveThemeFill());
 					skin.border = theme.getButtonBorder();
 					skin.selectedBorder = theme.getActiveFillBorder();
 					skin.setBorderForState(ToggleButtonState.DOWN(false), theme.getActiveFillBorder());
-					if (isDesktop) {
-						skin.maxWidth = 100.0;
-						skin.minWidth = 20.0;
-					} else {
-						skin.minWidth = 44.0;
-						skin.minHeight = 44.0;
-					}
 					button.backgroundSkin = skin;
 				}
 
@@ -91,13 +100,6 @@ class SteelTabBarStyles {
 				}
 				if (button.disabledTextFormat == null) {
 					button.disabledTextFormat = theme.getDisabledTextFormat();
-				}
-				if (button.selectedTextFormat == null) {
-					button.selectedTextFormat = theme.getActiveTextFormat();
-				}
-
-				if (button.getTextFormatForState(ToggleButtonState.DOWN(false)) == null) {
-					button.setTextFormatForState(ToggleButtonState.DOWN(false), theme.getActiveTextFormat());
 				}
 
 				button.paddingTop = 4.0;

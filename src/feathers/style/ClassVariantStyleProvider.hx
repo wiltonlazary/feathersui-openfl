@@ -54,6 +54,7 @@ import openfl.events.EventDispatcher;
 
 	@since 1.0.0
 **/
+@:event(feathers.events.StyleProviderEvent.STYLES_CHANGE)
 class ClassVariantStyleProvider extends EventDispatcher implements IStyleProvider {
 	/**
 		Creates a new `ClassVariantStyleProvider` object.

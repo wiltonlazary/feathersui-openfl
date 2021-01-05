@@ -40,11 +40,13 @@ class SteelToggleSwitchStyles {
 					trackSkin.height = 32.0;
 					trackSkin.minWidth = 64.0;
 					trackSkin.minHeight = 32.0;
-					trackSkin.cornerRadius = 32.0;
-					trackSkin.fill = theme.getInsetFill();
+					trackSkin.cornerRadius = 16.0;
 					trackSkin.border = theme.getInsetBorder();
+					trackSkin.disabledBorder = theme.getInsetBorder();
+					trackSkin.selectedBorder = theme.getSelectedInsetBorder();
+					trackSkin.fill = theme.getInsetFill();
 					trackSkin.selectedFill = theme.getReversedActiveThemeFill();
-					trackSkin.selectedBorder = theme.getActiveFillBorder();
+					trackSkin.disabledFill = theme.getDisabledInsetFill();
 
 					var track = new BasicToggleButton();
 					track.toggleable = false;
@@ -58,9 +60,10 @@ class SteelToggleSwitchStyles {
 					thumbSkin.height = 32.0;
 					thumbSkin.minWidth = 32.0;
 					thumbSkin.minHeight = 32.0;
-					thumbSkin.fill = theme.getButtonFill();
 					thumbSkin.border = theme.getBorder();
-					thumbSkin.selectedBorder = theme.getActiveFillBorder();
+					thumbSkin.disabledBorder = theme.getBorder();
+					thumbSkin.fill = theme.getButtonFill();
+					thumbSkin.disabledFill = theme.getButtonDisabledFill();
 
 					var thumb = new BasicToggleButton();
 					thumb.toggleable = false;
@@ -69,11 +72,11 @@ class SteelToggleSwitchStyles {
 					toggle.thumbSkin = thumb;
 				}
 				if (toggle.focusRectSkin == null) {
-					var skin = new RectangleSkin();
-					skin.fill = null;
-					skin.border = theme.getFocusBorder();
-					skin.cornerRadius = 32.0;
-					toggle.focusRectSkin = skin;
+					var focusRectSkin = new RectangleSkin();
+					focusRectSkin.fill = null;
+					focusRectSkin.border = theme.getFocusBorder();
+					focusRectSkin.cornerRadius = 16.0;
+					toggle.focusRectSkin = focusRectSkin;
 				}
 			});
 		}

@@ -8,17 +8,29 @@
 
 package feathers.controls;
 
-import feathers.core.DefaultFocusManager;
-import feathers.core.IFocusManager;
+import feathers.core.IFocusManagerAware;
 import feathers.core.PopUpManager;
 import feathers.themes.steel.components.SteelApplicationStyles;
-import feathers.utils.DeviceUtil;
 import feathers.utils.MathUtil;
 import feathers.utils.ScreenDensityScaleCalculator;
 import openfl.display.DisplayObjectContainer;
 import openfl.display.Sprite;
 import openfl.events.Event;
+#if !disable_focus_manager
+import feathers.core.FocusManager;
+#end
+#if !disable_tool_tip_manager
+import feathers.core.IToolTipManager;
+import feathers.core.ToolTipManager;
+#end
+#if !((desktop && !air) || (web && !flash))
+import feathers.utils.DeviceUtil;
 import openfl.system.Capabilities;
+#end
+#if flash
+import openfl.display.StageAlign;
+import openfl.display.StageScaleMode;
+#end
 
 /**
 	An optional root class for Feathers UI applications that will automatically
@@ -29,7 +41,7 @@ import openfl.system.Capabilities;
 	@since 1.0.0
 **/
 @:styleContext
-class Application extends LayoutGroup {
+class Application extends LayoutGroup implements IFocusManagerAware {
 	private static function defaultPopUpContainerFactory():DisplayObjectContainer {
 		return new Sprite();
 	}
@@ -44,14 +56,19 @@ class Application extends LayoutGroup {
 
 		super();
 
-		#if !disable_focus_manager
-		this.focusManager = new DefaultFocusManager(this);
+		#if flash
+		if (this.stage != null && this.root == this) {
+			this.stage.scaleMode = StageScaleMode.NO_SCALE;
+			this.stage.align = StageAlign.TOP_LEFT;
+		}
 		#end
 
 		this.addEventListener(Event.ADDED_TO_STAGE, application_addedToStageHandler, false, 100);
 	}
 
 	private var _scaler:ScreenDensityScaleCalculator;
+
+	private var _scaleFactor:Float = 1.0;
 
 	/**
 		The application's scaling factor on the current device. One pixel in
@@ -60,7 +77,14 @@ class Application extends LayoutGroup {
 
 		@see `Application.customScale`
 	**/
-	public var scaleFactor(default, null):Float = 1.0;
+	@:flash.property
+	public var scaleFactor(get, never):Float;
+
+	private function get_scaleFactor():Float {
+		return this._scaleFactor;
+	}
+
+	private var _customScale:Null<Float> = null;
 
 	/**
 		Instead of calculating the scale factor automatically, an application
@@ -76,15 +100,20 @@ class Application extends LayoutGroup {
 
 		@since 1.0.0
 	**/
-	public var customScale(default, set):Null<Float> = null;
+	@:flash.property
+	public var customScale(get, set):Null<Float>;
+
+	private function get_customScale():Null<Float> {
+		return this._customScale;
+	}
 
 	private function set_customScale(value:Null<Float>):Null<Float> {
-		if (this.customScale == value) {
-			return this.customScale;
+		if (this._customScale == value) {
+			return this._customScale;
 		}
-		this.customScale = value;
+		this._customScale = value;
 		this.refreshDimensions();
-		return this.customScale;
+		return this._customScale;
 	}
 
 	/**
@@ -103,13 +132,17 @@ class Application extends LayoutGroup {
 		SteelApplicationStyles.initialize();
 	}
 
+	#if !disable_tool_tip_manager
+	private var _toolTipManager:IToolTipManager;
+	#end
+
 	private function getScaleFactor():Float {
 		var result = 1.0;
 		if (this.stage == null) {
 			return result;
 		}
-		if (this.customScale != null) {
-			result = this.customScale;
+		if (this._customScale != null) {
+			result = this._customScale;
 		} else {
 			#if ((desktop && !air) || (web && !flash))
 			this._scaler = null;
@@ -140,11 +173,11 @@ class Application extends LayoutGroup {
 	}
 
 	private function refreshDimensions():Void {
-		this.scaleFactor = this.getScaleFactor();
-		this.scaleX = this.scaleFactor;
-		this.scaleY = this.scaleFactor;
+		this._scaleFactor = this.getScaleFactor();
+		this.scaleX = this._scaleFactor;
+		this.scaleY = this._scaleFactor;
 
-		var needsToBeDivisibleByTwo = Math.ffloor(this.scaleFactor) != this.scaleFactor;
+		var needsToBeDivisibleByTwo = Math.ffloor(this._scaleFactor) != this._scaleFactor;
 		var appWidth = Math.ffloor(this.stage.stageWidth);
 		if (needsToBeDivisibleByTwo) {
 			appWidth = MathUtil.roundDownToNearest(appWidth, 2);
@@ -156,11 +189,11 @@ class Application extends LayoutGroup {
 		}
 		this.height = appHeight;
 
-		this._popUpContainer.scaleX = this.scaleFactor;
-		this._popUpContainer.scaleY = this.scaleFactor;
+		this._popUpContainer.scaleX = this._scaleFactor;
+		this._popUpContainer.scaleY = this._scaleFactor;
 	}
 
-	private function preparePopUpContainer():Void {
+	private function preparePopUpManager():Void {
 		if (this._popUpContainer == null) {
 			var factory = this.popUpContainerFactory;
 			if (factory == null) {
@@ -171,15 +204,50 @@ class Application extends LayoutGroup {
 		this.stage.addChild(this._popUpContainer);
 		var popUpManager = PopUpManager.forStage(this.stage);
 		popUpManager.root = this._popUpContainer;
+		popUpManager.focusManager = this._focusManager;
 	}
 
-	private function cleanupPopUpContainer():Void {
+	private function cleanupPopUpManager():Void {
 		var popUpManager = PopUpManager.forStage(this.stage);
 		if (popUpManager.root == this._popUpContainer) {
 			popUpManager.root = this.stage;
 		}
+		if (popUpManager.focusManager == this._focusManager) {
+			popUpManager.focusManager = null;
+		}
 		this.stage.removeChild(this._popUpContainer);
 		this._popUpContainer = null;
+	}
+
+	private function prepareFocusManager():Void {
+		#if !disable_focus_manager
+		FocusManager.addRoot(this);
+		#end
+	}
+
+	private function cleanupFocusManager():Void {
+		#if !disable_focus_manager
+		if (FocusManager.hasRoot(this)) {
+			FocusManager.removeRoot(this);
+		}
+		#end
+	}
+
+	private function prepareToolTipManager():Void {
+		#if !disable_tool_tip_manager
+		if (!ToolTipManager.hasRoot(this.stage)) {
+			this._toolTipManager = ToolTipManager.addRoot(this.stage);
+		}
+		#end
+	}
+
+	private function cleanupToolTipManager():Void {
+		#if !disable_tool_tip_manager
+		if (this._toolTipManager != null) {
+			ToolTipManager.removeRoot(this.stage);
+			this._toolTipManager = null;
+		}
+		#end
 	}
 
 	private function application_addedToStageHandler(event:Event):Void {
@@ -190,14 +258,18 @@ class Application extends LayoutGroup {
 		#end
 		this.addEventListener(Event.REMOVED_FROM_STAGE, application_removedFromStageHandler);
 		this.stage.addEventListener(Event.RESIZE, application_stage_resizeHandler, false, 0, true);
-		this.preparePopUpContainer();
+		this.prepareFocusManager();
+		this.preparePopUpManager();
+		this.prepareToolTipManager();
 		this.refreshDimensions();
 	}
 
 	private function application_removedFromStageHandler(event:Event):Void {
 		this.removeEventListener(Event.REMOVED_FROM_STAGE, application_removedFromStageHandler);
 		this.stage.removeEventListener(Event.RESIZE, application_stage_resizeHandler);
-		this.cleanupPopUpContainer();
+		this.cleanupToolTipManager();
+		this.cleanupPopUpManager();
+		this.cleanupFocusManager();
 	}
 
 	private function application_stage_resizeHandler(event:Event):Void {

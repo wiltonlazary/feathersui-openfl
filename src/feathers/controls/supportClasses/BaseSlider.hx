@@ -8,16 +8,16 @@
 
 package feathers.controls.supportClasses;
 
-import feathers.core.IFocusObject;
-import feathers.core.FeathersControl;
-import feathers.core.InvalidationFlag;
-import feathers.core.IUIControl;
 import feathers.controls.IRange;
+import feathers.core.FeathersControl;
+import feathers.core.IFocusObject;
+import feathers.core.IUIControl;
 import feathers.events.FeathersEvent;
 import feathers.layout.Measurements;
-import openfl.display.DisplayObject;
+import feathers.skins.IProgrammaticSkin;
+import feathers.utils.ExclusivePointer;
+import feathers.utils.MathUtil;
 import openfl.display.InteractiveObject;
-import openfl.display.Sprite;
 import openfl.errors.TypeError;
 import openfl.events.Event;
 import openfl.events.MouseEvent;
@@ -31,10 +31,13 @@ import openfl.geom.Point;
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
 class BaseSlider extends FeathersControl implements IRange implements IFocusObject {
 	private function new() {
 		super();
 	}
+
+	private var _value:Float = 0.0;
 
 	/**
 		The value of the slider, which must be between the `minimum` and the
@@ -61,24 +64,34 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 		@since 1.0.0
 	**/
-	@:isVar
-	public var value(get, set):Float = 0.0;
+	@:flash.property
+	public var value(get, set):Float;
 
 	private function get_value():Float {
-		return this.value;
+		return this._value;
 	}
 
 	private function set_value(value:Float):Float {
-		if (this.value == value) {
-			return this.value;
+		if (this._snapInterval != 0.0 && value != this._minimum && value != this._maximum) {
+			value = MathUtil.roundToNearest(value, this._snapInterval);
 		}
-		this.value = value;
-		this.setInvalid(InvalidationFlag.DATA);
+		if (value < this._minimum) {
+			value = this._minimum;
+		} else if (value > this._maximum) {
+			value = this._maximum;
+		}
+		if (this._value == value) {
+			return this._value;
+		}
+		this._value = value;
+		this.setInvalid(DATA);
 		if (this.liveDragging || !this._dragging) {
 			FeathersEvent.dispatch(this, Event.CHANGE);
 		}
-		return this.value;
+		return this._value;
 	}
+
+	private var _minimum:Float = 0.0;
 
 	/**
 		The slider's value cannot be smaller than the minimum.
@@ -99,24 +112,27 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 		@since 1.0.0
 	**/
-	@:isVar
-	public var minimum(get, set):Float = 0.0;
+	@:flash.property
+	public var minimum(get, set):Float;
 
 	private function get_minimum():Float {
-		return this.minimum;
+		return this._minimum;
 	}
 
 	private function set_minimum(value:Float):Float {
-		if (this.minimum == value) {
-			return this.minimum;
+		if (this._minimum == value) {
+			return this._minimum;
 		}
-		this.minimum = value;
-		if (this.initialized && this.value < this.minimum) {
-			this.value = this.minimum;
+		this._minimum = value;
+		if (this.initialized && this._value < this._minimum) {
+			// use the setter
+			this.value = this._minimum;
 		}
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.minimum;
+		this.setInvalid(DATA);
+		return this._minimum;
 	}
+
+	private var _maximum:Float = 1.0;
 
 	/**
 		The slider's value cannot be larger than the maximum.
@@ -137,28 +153,32 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 		@since 1.0.0
 	**/
-	@:isVar
-	public var maximum(get, set):Float = 1.0;
+	@:flash.property
+	public var maximum(get, set):Float;
 
 	private function get_maximum():Float {
-		return this.maximum;
+		return this._maximum;
 	}
 
 	private function set_maximum(value:Float):Float {
-		if (this.maximum == value) {
-			return this.maximum;
+		if (this._maximum == value) {
+			return this._maximum;
 		}
-		this.maximum = value;
-		if (this.initialized && this.value > this.maximum) {
-			this.value = this.maximum;
+		this._maximum = value;
+		if (this.initialized && this._value > this._maximum) {
+			// use the setter
+			this.value = this._maximum;
 		}
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.maximum;
+		this.setInvalid(DATA);
+		return this._maximum;
 	}
 
+	// this should not be 0.0 by default because 0.0 breaks keyboard events
+	private var _step:Float = 0.01;
+
 	/**
-		As the slider's thumb is dragged, the `value` is snapped to the nearest
-		multiple of `step`. If `step` is `0.0`, the `value` is not snapped.
+		Indicates the amount that `value` is changed when the slider has focus
+		and one of the arrow keys is pressed.
 
 		In the following example, the step is changed to `1.0`:
 
@@ -169,23 +189,68 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		slider.value = 10.0;
 		```
 
-		@default 0.0
+		@default 0.01
 
 		@see `BaseSlider.value`
 		@see `BaseSlider.minimum`
 		@see `BaseSlider.maximum`
+		@see `BaseSlider.snapInterval`
 
 		@since 1.0.0
 	**/
-	public var step(default, set):Float = 0.1;
+	@:flash.property
+	public var step(get, set):Float;
+
+	private function get_step():Float {
+		return this._step;
+	}
 
 	private function set_step(value:Float):Float {
-		if (this.step == value) {
-			return this.step;
+		if (this._step == value) {
+			return this._step;
 		}
-		this.step = value;
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.step;
+		this._step = value;
+		this.setInvalid(DATA);
+		return this._step;
+	}
+
+	private var _snapInterval:Float = 0.0;
+
+	/**
+		When the slider's `value` changes, it may be "snapped" to the nearest
+		multiple of `snapInterval`. If `snapInterval` is `0.0`, the `value` is
+		not snapped.
+
+		In the following example, the snap inverval is changed to `1.0`:
+
+		```hx
+		slider.minimum = 0.0;
+		slider.maximum = 100.0;
+		slider.step = 1.0;
+		slider.snapInterval = 1.0;
+		slider.value = 10.0;
+		```
+
+		@default 0.0
+
+		@see `BaseSlider.step`
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var snapInterval(get, set):Float;
+
+	private function get_snapInterval():Float {
+		return this._snapInterval;
+	}
+
+	private function set_snapInterval(value:Float):Float {
+		if (this._snapInterval == value) {
+			return this._snapInterval;
+		}
+		this._snapInterval = value;
+		this.setInvalid(DATA);
+		return this._snapInterval;
 	}
 
 	/**
@@ -203,10 +268,9 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 		@since 1.0.0
 	**/
-	public var liveDragging(default, default):Bool = true;
+	public var liveDragging:Bool = true;
 
-	private var thumbContainer:Sprite;
-	private var _currentThumbSkin:DisplayObject = null;
+	private var _currentThumbSkin:InteractiveObject = null;
 	private var _thumbSkinMeasurements:Measurements = null;
 
 	/**
@@ -225,10 +289,9 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		@since 1.0.0
 	**/
 	@:style
-	public var thumbSkin:DisplayObject = null;
+	public var thumbSkin:InteractiveObject = null;
 
-	private var trackContainer:Sprite;
-	private var _currentTrackSkin:DisplayObject = null;
+	private var _currentTrackSkin:InteractiveObject = null;
 	private var _trackSkinMeasurements:Measurements = null;
 
 	/**
@@ -248,10 +311,9 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		@since 1.0.0
 	**/
 	@:style
-	public var trackSkin:DisplayObject = null;
+	public var trackSkin:InteractiveObject = null;
 
-	private var secondaryTrackContainer:Sprite;
-	private var _currentSecondaryTrackSkin:DisplayObject = null;
+	private var _currentSecondaryTrackSkin:InteractiveObject = null;
 	private var _secondaryTrackSkinMeasurements:Measurements = null;
 
 	/**
@@ -280,7 +342,7 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		@since 1.0.0
 	**/
 	@:style
-	public var secondaryTrackSkin:DisplayObject = null;
+	public var secondaryTrackSkin:InteractiveObject = null;
 
 	/**
 		The space, measured in pixels, between the minimum position of the thumb
@@ -336,17 +398,19 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 	override private function initialize():Void {
 		super.initialize();
-		if (this.value < this.minimum) {
-			this.value = this.minimum;
-		} else if (this.value > this.maximum) {
-			this.value = this.maximum;
+		if (this._value < this._minimum) {
+			// use the setter
+			this.value = this._minimum;
+		} else if (this._value > this._maximum) {
+			// use the setter
+			this.value = this._maximum;
 		}
 	}
 
 	override private function update():Void {
-		var sizeInvalid = this.isInvalid(InvalidationFlag.SIZE);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var sizeInvalid = this.isInvalid(SIZE);
+		var stateInvalid = this.isInvalid(STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
 
 		if (stylesInvalid) {
 			this.refreshThumb();
@@ -374,15 +438,11 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			return;
 		}
 		if (oldSkin != null) {
-			if (this.thumbContainer != null) {
-				this.thumbContainer.removeEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
-				this.thumbContainer.removeChild(oldSkin);
-				this.removeChild(this.thumbContainer);
-				this.thumbContainer = null;
-			} else {
-				oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
-				this.removeChild(oldSkin);
+			if (Std.is(oldSkin, IProgrammaticSkin)) {
+				cast(oldSkin, IProgrammaticSkin).uiContext = null;
 			}
+			oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
+			this.removeChild(oldSkin);
 		}
 		if (this._currentThumbSkin != null) {
 			if (Std.is(this._currentThumbSkin, IUIControl)) {
@@ -393,17 +453,11 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			} else {
 				this._thumbSkinMeasurements.save(this._currentThumbSkin);
 			}
-			if (!Std.is(this._currentThumbSkin, InteractiveObject)) {
-				// if the skin isn't interactive, we need to add it to something
-				// that is interactive
-				this.thumbContainer = new Sprite();
-				this.thumbContainer.addChild(this._currentThumbSkin);
-				this.addChild(this.thumbContainer);
-				this.thumbContainer.addEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
-			} else {
-				// add it above the trackSkin and secondaryTrackSkin
-				this.addChild(this._currentThumbSkin);
-				this.thumbSkin.addEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
+			// add it above the trackSkin and secondaryTrackSkin
+			this.addChild(this._currentThumbSkin);
+			this._currentThumbSkin.addEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
+			if (Std.is(this._currentThumbSkin, IProgrammaticSkin)) {
+				cast(this._currentThumbSkin, IProgrammaticSkin).uiContext = this;
 			}
 		} else {
 			this._thumbSkinMeasurements = null;
@@ -417,15 +471,11 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			return;
 		}
 		if (oldSkin != null) {
-			if (this.trackContainer != null) {
-				this.trackContainer.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-				this.trackContainer.removeChild(oldSkin);
-				this.removeChild(this.trackContainer);
-				this.trackContainer = null;
-			} else {
-				this.removeChild(oldSkin);
-				oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			if (Std.is(oldSkin, IProgrammaticSkin)) {
+				cast(oldSkin, IProgrammaticSkin).uiContext = null;
 			}
+			this.removeChild(oldSkin);
+			oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
 		}
 		if (this._currentTrackSkin != null) {
 			if (Std.is(this._currentTrackSkin, IUIControl)) {
@@ -436,17 +486,11 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			} else {
 				this._trackSkinMeasurements.save(this._currentTrackSkin);
 			}
-			if (!Std.is(this._currentTrackSkin, InteractiveObject)) {
-				// if the skin isn't interactive, we need to add it to something
-				// that is interactive
-				this.trackContainer = new Sprite();
-				this.trackContainer.addChild(this._currentTrackSkin);
-				this.addChildAt(this.trackContainer, 0);
-				this.trackContainer.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			} else {
-				// always on the bottom
-				this.addChildAt(this._currentTrackSkin, 0);
-				this.trackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			// always on the bottom
+			this.addChildAt(this._currentTrackSkin, 0);
+			this._currentTrackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			if (Std.is(this._currentTrackSkin, IProgrammaticSkin)) {
+				cast(this._currentTrackSkin, IProgrammaticSkin).uiContext = this;
 			}
 		} else {
 			this._trackSkinMeasurements = null;
@@ -460,15 +504,11 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			return;
 		}
 		if (oldSkin != null) {
-			if (this.secondaryTrackContainer != null) {
-				this.secondaryTrackContainer.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-				this.secondaryTrackContainer.removeChild(oldSkin);
-				this.removeChild(this.secondaryTrackContainer);
-				this.secondaryTrackContainer = null;
-			} else {
-				this.removeChild(oldSkin);
-				oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			if (Std.is(oldSkin, IProgrammaticSkin)) {
+				cast(oldSkin, IProgrammaticSkin).uiContext = null;
 			}
+			this.removeChild(oldSkin);
+			oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
 		}
 		if (this._currentSecondaryTrackSkin != null) {
 			if (Std.is(this._currentSecondaryTrackSkin, IUIControl)) {
@@ -479,20 +519,12 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			} else {
 				this._secondaryTrackSkinMeasurements.save(this._currentSecondaryTrackSkin);
 			}
-
 			// on the bottom or above the trackSkin
 			var index = this._currentTrackSkin != null ? 1 : 0;
-
-			if (!Std.is(this._currentSecondaryTrackSkin, InteractiveObject)) {
-				// if the skin isn't interactive, we need to add it to something
-				// that is interactive
-				this.secondaryTrackContainer = new Sprite();
-				this.secondaryTrackContainer.addChild(this._currentSecondaryTrackSkin);
-				this.addChildAt(this.secondaryTrackContainer, index);
-				this.secondaryTrackContainer.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			} else {
-				this.addChildAt(this._currentSecondaryTrackSkin, index);
-				this._currentSecondaryTrackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			this.addChildAt(this._currentSecondaryTrackSkin, index);
+			this._currentSecondaryTrackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			if (Std.is(this._currentSecondaryTrackSkin, IProgrammaticSkin)) {
+				cast(this._currentSecondaryTrackSkin, IProgrammaticSkin).uiContext = this;
 			}
 		} else {
 			this._secondaryTrackSkinMeasurements = null;
@@ -501,13 +533,13 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 	private function refreshEnabled():Void {
 		if (Std.is(this.thumbSkin, IUIControl)) {
-			cast(this.thumbSkin, IUIControl).enabled = this.enabled;
+			cast(this.thumbSkin, IUIControl).enabled = this._enabled;
 		}
 		if (Std.is(this.trackSkin, IUIControl)) {
-			cast(this.trackSkin, IUIControl).enabled = this.enabled;
+			cast(this.trackSkin, IUIControl).enabled = this._enabled;
 		}
 		if (Std.is(this.secondaryTrackSkin, IUIControl)) {
-			cast(this.secondaryTrackSkin, IUIControl).enabled = this.enabled;
+			cast(this.secondaryTrackSkin, IUIControl).enabled = this._enabled;
 		}
 	}
 
@@ -534,8 +566,8 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 	private function normalizeValue():Float {
 		var normalized = 1.0;
-		if (this.minimum != this.maximum) {
-			normalized = (this.value - this.minimum) / (this.maximum - this.minimum);
+		if (this._minimum != this._maximum) {
+			normalized = (this._value - this._minimum) / (this._maximum - this._minimum);
 			if (normalized < 0.0) {
 				normalized = 0.0;
 			} else if (normalized > 1) {
@@ -558,6 +590,16 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 	}
 
 	private function thumbSkin_mouseDownHandler(event:MouseEvent):Void {
+		if (!this._enabled) {
+			return;
+		}
+
+		var exclusivePointer = ExclusivePointer.forStage(this.stage);
+		var result = exclusivePointer.claimPointer(ExclusivePointer.POINTER_ID_MOUSE, this);
+		if (!result) {
+			return;
+		}
+
 		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, thumbSkin_stage_mouseMoveHandler, false, 0, true);
 		this.stage.addEventListener(MouseEvent.MOUSE_UP, thumbSkin_stage_mouseUpHandler, false, 0, true);
 
@@ -574,6 +616,7 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 	private function thumbSkin_stage_mouseMoveHandler(event:MouseEvent):Void {
 		var location = new Point(event.stageX, event.stageY);
 		location = this.globalToLocal(location);
+		// use the setter
 		this.value = this.locationToValue(location.x, location.y);
 	}
 
@@ -587,6 +630,16 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 	}
 
 	private function trackSkin_mouseDownHandler(event:MouseEvent):Void {
+		if (!this._enabled) {
+			return;
+		}
+
+		var exclusivePointer = ExclusivePointer.forStage(this.stage);
+		var result = exclusivePointer.claimPointer(ExclusivePointer.POINTER_ID_MOUSE, this);
+		if (!result) {
+			return;
+		}
+
 		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, trackSkin_stage_mouseMoveHandler, false, 0, true);
 		this.stage.addEventListener(MouseEvent.MOUSE_UP, trackSkin_stage_mouseUpHandler, false, 0, true);
 
@@ -597,6 +650,7 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		this._pointerStartX = location.x;
 		this._pointerStartY = location.y;
 		this._dragging = true;
+		// use the setter
 		this.value = this.locationToValue(location.x, location.y);
 	}
 
@@ -604,6 +658,7 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		var location = new Point(event.stageX, event.stageY);
 		location = this.globalToLocal(location);
 
+		// use the setter
 		this.value = this.locationToValue(location.x, location.y);
 	}
 

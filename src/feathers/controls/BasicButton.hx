@@ -8,23 +8,21 @@
 
 package feathers.controls;
 
-import feathers.utils.KeyToState;
+import feathers.core.IStateObserver;
 import feathers.core.FeathersControl;
 import feathers.core.IMeasureObject;
 import feathers.core.IStateContext;
-import feathers.core.IStateObserver;
 import feathers.core.IUIControl;
 import feathers.core.IValidating;
-import feathers.core.InvalidationFlag;
 import feathers.events.FeathersEvent;
 import feathers.layout.Measurements;
+import feathers.skins.IProgrammaticSkin;
+import feathers.utils.KeyToState;
 import feathers.utils.MeasurementsUtil;
 import feathers.utils.PointerToState;
 import feathers.utils.PointerTrigger;
 import openfl.display.DisplayObject;
-import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
-import openfl.ui.Keyboard;
 
 /**
 	A simple button control with states, but no content, that is useful for
@@ -35,7 +33,9 @@ import openfl.ui.Keyboard;
 
 	@see `feathers.controls.Button`
 **/
-class BasicButton extends FeathersControl implements IStateContext<ButtonState> {
+@:event(feathers.events.FeathersEvent.STATE_CHANGE)
+@:event(feathers.events.TriggerEvent.TRIGGER)
+class BasicButton extends FeathersControl implements ITriggerView implements IStateContext<ButtonState> {
 	/**
 		Creates a new `BasicButton` object.
 
@@ -57,6 +57,8 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 		this.addEventListener(MouseEvent.CLICK, basicButton_clickHandler);
 	}
 
+	private var _currentState:ButtonState = UP;
+
 	/**
 		The current state of the button.
 
@@ -68,22 +70,23 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 
 		@since 1.0.0
 	**/
-	public var currentState(get, null):ButtonState = UP;
+	@:flash.property
+	public var currentState(get, never):#if flash Dynamic #else ButtonState #end;
 
-	private function get_currentState():ButtonState {
-		return this.currentState;
+	private function get_currentState():#if flash Dynamic #else ButtonState #end {
+		return this._currentState;
 	}
 
 	override private function set_enabled(value:Bool):Bool {
 		super.enabled = value;
-		if (this.enabled) {
-			if (this.currentState == DISABLED) {
+		if (this._enabled) {
+			if (this._currentState == DISABLED) {
 				this.changeState(UP);
 			}
 		} else {
 			this.changeState(DISABLED);
 		}
-		return this.enabled;
+		return this._enabled;
 	}
 
 	private var _pointerToState:PointerToState<ButtonState> = null;
@@ -181,7 +184,7 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 		} else {
 			this._stateToSkin.set(state, skin);
 		}
-		this.setInvalid(InvalidationFlag.STYLES);
+		this.setInvalid(STYLES);
 	}
 
 	override private function initialize():Void {
@@ -201,8 +204,8 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 	}
 
 	override private function update():Void {
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
+		var stateInvalid = this.isInvalid(STATE);
 
 		if (stylesInvalid || stateInvalid) {
 			this.refreshBackgroundSkin();
@@ -239,6 +242,9 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 		} else {
 			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
 		}
+		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
+			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
+		}
 		if (Std.is(this._currentBackgroundSkin, IStateObserver)) {
 			cast(this._currentBackgroundSkin, IStateObserver).stateContext = this;
 		}
@@ -246,7 +252,7 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		var result = this._stateToSkin.get(this.currentState);
+		var result = this._stateToSkin.get(this._currentState);
 		if (result != null) {
 			return result;
 		}
@@ -257,13 +263,16 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 		if (skin == null) {
 			return;
 		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = null;
+		}
 		if (Std.is(skin, IStateObserver)) {
 			cast(skin, IStateObserver).stateContext = null;
 		}
+		// we need to restore these values so that they won't be lost the
+		// next time that this skin is used for measurement
 		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
-			// we need to restore these values so that they won't be lost the
-			// next time that this skin is used for measurement
 			this.removeChild(skin);
 		}
 	}
@@ -379,19 +388,19 @@ class BasicButton extends FeathersControl implements IStateContext<ButtonState> 
 	}
 
 	private function changeState(state:ButtonState):Void {
-		if (!this.enabled) {
+		if (!this._enabled) {
 			state = DISABLED;
 		}
-		if (this.currentState == state) {
+		if (this._currentState == state) {
 			return;
 		}
-		this.currentState = state;
-		this.setInvalid(InvalidationFlag.STATE);
+		this._currentState = state;
+		this.setInvalid(STATE);
 		FeathersEvent.dispatch(this, FeathersEvent.STATE_CHANGE);
 	}
 
 	private function basicButton_clickHandler(event:MouseEvent):Void {
-		if (!this.enabled) {
+		if (!this._enabled) {
 			event.stopImmediatePropagation();
 			return;
 		}

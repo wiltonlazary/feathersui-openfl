@@ -8,6 +8,9 @@
 
 package feathers.controls;
 
+import feathers.data.GridViewCellState;
+import feathers.utils.DisplayObjectRecycler;
+import openfl.display.DisplayObject;
 import openfl.events.EventDispatcher;
 
 /**
@@ -71,7 +74,22 @@ class GridViewColumn extends EventDispatcher {
 
 		@since 1.0.0
 	**/
-	public var minWidth:Null<Float> = null;
+	public var minWidth:Float = 0.0;
+
+	/**
+		Manages cell renderers used by this grid view column.
+
+		In the following example, the column uses a custom cell renderer class:
+
+		```hx
+		column.cellRendererRecycler = DisplayObjectRecycler.withClass(CustomCellRenderer);
+		```
+
+		@see `feathers.controls.GridView.cellRendererRecycler`
+
+		@since 1.0.0
+	**/
+	public var cellRendererRecycler:DisplayObjectRecycler<Dynamic, GridViewCellState, DisplayObject> = null;
 
 	/**
 		Converts an item to text to display within a grid view cell. By default,

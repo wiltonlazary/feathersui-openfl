@@ -14,19 +14,21 @@ import feathers.core.IStateObserver;
 import feathers.core.ITextControl;
 import feathers.core.IUIControl;
 import feathers.core.IValidating;
-import feathers.core.InvalidationFlag;
 import feathers.layout.HorizontalAlign;
 import feathers.layout.Measurements;
 import feathers.layout.RelativePosition;
 import feathers.layout.VerticalAlign;
+import feathers.skins.IProgrammaticSkin;
+import feathers.text.TextFormat;
 import feathers.themes.steel.components.SteelButtonStyles;
 import feathers.utils.MeasurementsUtil;
 import openfl.display.DisplayObject;
+import openfl.events.Event;
+import openfl.events.FocusEvent;
 import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
-import openfl.text.TextFormat;
 import openfl.ui.Keyboard;
 
 /**
@@ -48,8 +50,48 @@ import openfl.ui.Keyboard;
 
 	@since 1.0.0
 **/
+@:meta(DefaultProperty("text"))
+@defaultXmlProperty("text")
 @:styleContext
 class Button extends BasicButton implements ITextControl implements IFocusObject {
+	/**
+		A variant used to style the button in a more prominent style to indicate
+		its greater importance than other nearby buttons. Variants allow themes
+		to provide an assortment of different appearances for the same type of
+		UI component.
+
+		The following example uses this variant:
+
+		```hx
+		var button = new Button();
+		button.variant = Button.VARIANT_PRIMARY;
+		```
+
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@since 1.0.0
+	**/
+	public static final VARIANT_PRIMARY = "primary";
+
+	/**
+		A variant used to style the button in a style that indicates that
+		performing the action is considered dangerous. Variants allow themes to
+		provide an assortment of different appearances for the same type of UI
+		component.
+
+		The following example uses this variant:
+
+		```hx
+		var button = new Button();
+		button.variant = Button.VARIANT_DANGER;
+		```
+
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@since 1.0.0
+	**/
+	public static final VARIANT_DANGER = "danger";
+
 	/**
 		Creates a new `Button` object.
 
@@ -65,13 +107,18 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		this.focusRect = false;
 
 		this.addEventListener(KeyboardEvent.KEY_DOWN, button_keyDownHandler);
+		this.addEventListener(FocusEvent.FOCUS_IN, button_focusInHandler);
+		this.addEventListener(FocusEvent.FOCUS_OUT, button_focusOutHandler);
 	}
 
 	private var textField:TextField;
 
 	private var _previousText:String = null;
 	private var _previousTextFormat:TextFormat = null;
+	private var _previousSimpleTextFormat:openfl.text.TextFormat = null;
 	private var _updatedTextStyles = false;
+
+	private var _text:String;
 
 	/**
 		The text displayed by the button.
@@ -88,20 +135,20 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 		@since 1.0.0
 	**/
-	@:isVar
+	@:flash.property
 	public var text(get, set):String;
 
 	private function get_text():String {
-		return this.text;
+		return this._text;
 	}
 
 	private function set_text(value:String):String {
-		if (this.text == value) {
-			return this.text;
+		if (this._text == value) {
+			return this._text;
 		}
-		this.text = value;
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.text;
+		this._text = value;
+		this.setInvalid(DATA);
+		return this._text;
 	}
 
 	/**
@@ -121,7 +168,26 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		@since 1.0.0
 	**/
 	@:style
-	public var textFormat:TextFormat = null;
+	public var textFormat:AbstractTextFormat = null;
+
+	/**
+		The font styles used to render the button's text when the button is
+		disabled.
+
+		In the following example, the button's disabled text formatting is
+		customized:
+
+		```hx
+		button.enabled = false;
+		button.disabledTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		```
+
+		@see `Button.textFormat`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var disabledTextFormat:AbstractTextFormat = null;
 
 	/**
 		Determines if an embedded font is used or not.
@@ -342,9 +408,91 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 	@:style
 	public var minGap:Float = 0.0;
 
+	/**
+		Offsets the x position of the icon by a certain number of pixels.
+		This does not affect the measurement of the button. The button's width
+		will not get smaller or larger when the icon is offset from its default
+		x position.
+
+		The following example offsets the x position of the button's icon by
+		20 pixels:
+
+		```hx
+		button.iconOffsetX = 20.0;
+		```
+
+		@see `Button.iconOffsetY`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var iconOffsetX:Float = 0.0;
+
+	/**
+		Offsets the y position of the icon by a certain number of pixels.
+		This does not affect the measurement of the button. The button's height
+		will not get smaller or larger when the icon is offset from its default
+		y position.
+
+		The following example offsets the y position of the button's icon by
+		20 pixels:
+
+		```hx
+		button.iconOffsetY = 20.0;
+		```
+
+		@see `Button.iconOffsetX`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var iconOffsetY:Float = 0.0;
+
+	/**
+		Offsets the x position of the text by a certain number of pixels.
+		This does not affect the measurement of the button. The button's width
+		will not get smaller or larger when the text is offset from its default
+		x position. Nor does it change the size of the text, so the text may
+		appear outside of the button's bounds if the offset is large enough.
+
+		The following example offsets the x position of the button's text by
+		20 pixels:
+
+		```hx
+		button.textOffsetX = 20.0;
+		```
+
+		@see `Button.textOffsetY`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var textOffsetX:Float = 0.0;
+
+	/**
+		Offsets the y position of the text by a certain number of pixels.
+		This does not affect the measurement of the button. The button's height
+		will not get smaller or larger when the text is offset from its default
+		y position. Nor does it change the size of the text, so the text may
+		appear outside of the button's bounds if the offset is large enough.
+
+		The following example offsets the y position of the button's text by
+		20 pixels:
+
+		```hx
+		button.textOffsetY = 20.0;
+		```
+
+		@see `Button.textOffsetX`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var textOffsetY:Float = 0.0;
+
 	private var _textMeasuredWidth:Float;
 	private var _textMeasuredHeight:Float;
-	private var _stateToTextFormat:Map<ButtonState, TextFormat> = new Map();
+	private var _stateToTextFormat:Map<ButtonState, AbstractTextFormat> = new Map();
 
 	/**
 		Gets the text format to be used by the button when its `currentState`
@@ -359,7 +507,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 		@since 1.0.0
 	**/
-	public function getTextFormatForState(state:ButtonState):TextFormat {
+	public function getTextFormatForState(state:ButtonState):AbstractTextFormat {
 		return this._stateToTextFormat.get(state);
 	}
 
@@ -378,7 +526,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		@since 1.0.0
 	**/
 	@style
-	public function setTextFormatForState(state:ButtonState, textFormat:TextFormat):Void {
+	public function setTextFormatForState(state:ButtonState, textFormat:AbstractTextFormat):Void {
 		if (!this.setStyle("setTextFormatForState", state)) {
 			return;
 		}
@@ -387,7 +535,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		} else {
 			this._stateToTextFormat.set(state, textFormat);
 		}
-		this.setInvalid(InvalidationFlag.STYLES);
+		this.setInvalid(STYLES);
 	}
 
 	/**
@@ -436,7 +584,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		} else {
 			this._stateToIcon.set(state, icon);
 		}
-		this.setInvalid(InvalidationFlag.STYLES);
+		this.setInvalid(STYLES);
 	}
 
 	private function initializeButtonTheme():Void {
@@ -454,9 +602,9 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 	}
 
 	override private function update():Void {
-		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var dataInvalid = this.isInvalid(DATA);
+		var stateInvalid = this.isInvalid(STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
 
 		this._updatedTextStyles = false;
 
@@ -488,7 +636,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			return false;
 		}
 
-		var hasText = this.text != null && this.text.length > 0;
+		var hasText = this._text != null && this._text.length > 0;
 		if (hasText) {
 			this.refreshTextFieldDimensions(true);
 		}
@@ -584,10 +732,10 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		if (adjustedGap == Math.POSITIVE_INFINITY) {
 			adjustedGap = this.minGap;
 		}
-		var contentWidth = this.text != null ? this._textMeasuredWidth : 0.0;
+		var contentWidth = this._text != null ? this._textMeasuredWidth : 0.0;
 		if (this._currentIcon != null) {
 			if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentWidth += adjustedGap;
 				}
 				contentWidth += this._currentIcon.width;
@@ -604,10 +752,10 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			adjustedGap = this.minGap;
 		}
 
-		var contentHeight = this.text != null ? this._textMeasuredHeight : 0.0;
+		var contentHeight = this._text != null ? this._textMeasuredHeight : 0.0;
 		if (this._currentIcon != null) {
 			if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentHeight += adjustedGap;
 				}
 				contentHeight += this._currentIcon.height;
@@ -623,10 +771,10 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		if (adjustedGap == Math.POSITIVE_INFINITY) {
 			adjustedGap = this.minGap;
 		}
-		var contentMinWidth = this.text != null ? this._textMeasuredWidth : 0.0;
+		var contentMinWidth = this._text != null ? this._textMeasuredWidth : 0.0;
 		if (this._currentIcon != null) {
 			if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentMinWidth += adjustedGap;
 				}
 				contentMinWidth += this._currentIcon.width;
@@ -642,10 +790,10 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		if (adjustedGap == Math.POSITIVE_INFINITY) {
 			adjustedGap = this.minGap;
 		}
-		var contentMinHeight = this.text != null ? this._textMeasuredHeight : 0.0;
+		var contentMinHeight = this._text != null ? this._textMeasuredHeight : 0.0;
 		if (this._currentIcon != null) {
 			if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentMinHeight += adjustedGap;
 				}
 				contentMinHeight += this._currentIcon.height;
@@ -662,43 +810,54 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			this._updatedTextStyles = true;
 		}
 		var textFormat = this.getCurrentTextFormat();
-		if (textFormat == this._previousTextFormat) {
+		var simpleTextFormat = textFormat != null ? textFormat.toSimpleTextFormat() : null;
+		if (simpleTextFormat == this._previousSimpleTextFormat) {
 			// nothing to refresh
 			return;
 		}
-		if (textFormat != null) {
-			this.textField.defaultTextFormat = textFormat;
-			this._updatedTextStyles = true;
-			this._previousTextFormat = textFormat;
+		if (this._previousTextFormat != null) {
+			this._previousTextFormat.removeEventListener(Event.CHANGE, button_textFormat_changeHandler);
 		}
+		if (textFormat != null) {
+			textFormat.addEventListener(Event.CHANGE, button_textFormat_changeHandler, false, 0, true);
+			this.textField.defaultTextFormat = simpleTextFormat;
+			this._updatedTextStyles = true;
+		}
+		this._previousTextFormat = textFormat;
+		this._previousSimpleTextFormat = simpleTextFormat;
 	}
 
 	private function refreshText():Void {
-		var hasText = this.text != null && this.text.length > 0;
+		var hasText = this._text != null && this._text.length > 0;
 		this.textField.visible = hasText;
-		if (this.text == this._previousText && !this._updatedTextStyles) {
+		if (this._text == this._previousText && !this._updatedTextStyles) {
 			// nothing to refresh
 			return;
 		}
-		if (hasText) {
-			this.textField.text = this.text;
-		} else {
-			this.textField.text = "\u8203"; // zero-width space
-		}
+		// set autoSize before text because setting text first can trigger an
+		// extra text engine reflow
 		this.textField.autoSize = TextFieldAutoSize.LEFT;
+		if (hasText) {
+			this.textField.text = this._text;
+		} else {
+			this.textField.text = "\u200b"; // zero-width space
+		}
 		this._textMeasuredWidth = this.textField.width;
 		this._textMeasuredHeight = this.textField.height;
 		this.textField.autoSize = TextFieldAutoSize.NONE;
 		if (!hasText) {
 			this.textField.text = "";
 		}
-		this._previousText = this.text;
+		this._previousText = this._text;
 	}
 
 	private function getCurrentTextFormat():TextFormat {
-		var result = this._stateToTextFormat.get(this.currentState);
+		var result = this._stateToTextFormat.get(this._currentState);
 		if (result != null) {
 			return result;
+		}
+		if (!this._enabled && this.disabledTextFormat != null) {
+			return this.disabledTextFormat;
 		}
 		return this.textFormat;
 	}
@@ -706,7 +865,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 	private function layoutContent():Void {
 		this.refreshTextFieldDimensions(false);
 
-		var hasText = this.text != null && this.text.length > 0;
+		var hasText = this._text != null && this._text.length > 0;
 		var iconIsInLayout = this._currentIcon != null && this.iconPosition != MANUAL;
 		if (hasText && iconIsInLayout) {
 			this.positionSingleChild(this.textField);
@@ -715,6 +874,18 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			this.positionSingleChild(this.textField);
 		} else if (iconIsInLayout) {
 			this.positionSingleChild(this._currentIcon);
+		}
+		if (this._currentIcon != null) {
+			if (this.iconPosition == MANUAL) {
+				this._currentIcon.x = this.paddingLeft;
+				this._currentIcon.y = this.paddingTop;
+			}
+			this._currentIcon.x += this.iconOffsetX;
+			this._currentIcon.y += this.iconOffsetY;
+		}
+		if (hasText) {
+			this.textField.x += this.textOffsetX;
+			this.textField.y += this.textOffsetY;
 		}
 	}
 
@@ -725,7 +896,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			cast(this._currentIcon, IValidating).validateNow();
 		}
 		this._ignoreIconResizes = oldIgnoreIconResizes;
-		if (this.text == null || this.text.length == 0) {
+		if (this._text == null || this._text.length == 0) {
 			return;
 		}
 
@@ -888,14 +1059,19 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		} else {
 			this._iconMeasurements.save(this._currentIcon);
 		}
+		if (Std.is(this._currentIcon, IProgrammaticSkin)) {
+			cast(this._currentIcon, IProgrammaticSkin).uiContext = this;
+		}
 		if (Std.is(this._currentIcon, IStateObserver)) {
 			cast(this._currentIcon, IStateObserver).stateContext = this;
 		}
-		this.addChild(this._currentIcon);
+		var index = this.getChildIndex(this.textField);
+		// the icon should be below the text
+		this.addChildAt(this._currentIcon, index);
 	}
 
 	private function getCurrentIcon():DisplayObject {
-		var result = this._stateToIcon.get(this.currentState);
+		var result = this._stateToIcon.get(this._currentState);
 		if (result != null) {
 			return result;
 		}
@@ -906,24 +1082,39 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		if (icon == null) {
 			return;
 		}
+		if (Std.is(icon, IProgrammaticSkin)) {
+			cast(icon, IProgrammaticSkin).uiContext = null;
+		}
 		if (Std.is(icon, IStateObserver)) {
 			cast(icon, IStateObserver).stateContext = null;
 		}
+		// we need to restore these values so that they won't be lost the
+		// next time that this icon is used for measurement
 		this._iconMeasurements.restore(icon);
 		if (icon.parent == this) {
-			// we need to restore these values so that they won't be lost the
-			// next time that this icon is used for measurement
 			this.removeChild(icon);
 		}
 	}
 
 	private function button_keyDownHandler(event:KeyboardEvent):Void {
-		if (!this.enabled || (this.buttonMode && this.focusRect == true)) {
+		if (!this._enabled || (this.buttonMode && this.focusRect == true)) {
 			return;
 		}
 		if (event.keyCode != Keyboard.SPACE && event.keyCode != Keyboard.ENTER) {
 			return;
 		}
 		this.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+	}
+
+	private function button_focusInHandler(event:FocusEvent):Void {
+		this._keyToState.enabled = this._enabled;
+	}
+
+	private function button_focusOutHandler(event:FocusEvent):Void {
+		this._keyToState.enabled = false;
+	}
+
+	private function button_textFormat_changeHandler(event:Event):Void {
+		this.setInvalid(STYLES);
 	}
 }

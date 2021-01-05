@@ -21,6 +21,66 @@ import feathers.utils.DisplayUtil;
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.ACTIVATE)
+@:event(openfl.events.Event.ADDED)
+@:event(openfl.events.Event.ADDED_TO_STAGE)
+@:event(openfl.events.Event.CLEAR)
+@:event(openfl.events.Event.COPY)
+@:event(openfl.events.Event.CUT)
+@:event(openfl.events.Event.DEACTIVATE)
+@:event(openfl.events.Event.ENTER_FRAME)
+@:event(openfl.events.Event.EXIT_FRAME)
+@:event(openfl.events.Event.FRAME_CONSTRUCTED)
+@:event(openfl.events.Event.PASTE)
+@:event(openfl.events.Event.REMOVED)
+@:event(openfl.events.Event.REMOVED_FROM_STAGE)
+@:event(openfl.events.Event.RENDER)
+@:event(openfl.events.Event.SELECT_ALL)
+@:event(openfl.events.Event.TAB_CHILDREN_CHANGE)
+@:event(openfl.events.Event.TAB_ENABLED_CHANGE)
+@:event(openfl.events.Event.TAB_INDEX_CHANGE)
+@:event(openfl.events.FocusEvent.FOCUS_IN)
+@:event(openfl.events.FocusEvent.FOCUS_OUT)
+@:event(openfl.events.FocusEvent.KEY_FOCUS_CHANGE)
+@:event(openfl.events.FocusEvent.MOUSE_FOCUS_CHANGE)
+@:event(openfl.events.KeyboardEvent.KEY_DOWN)
+@:event(openfl.events.KeyboardEvent.KEY_UP)
+@:event(openfl.events.MouseEvent.CLICK)
+@:event(openfl.events.MouseEvent.DOUBLE_CLICK)
+@:event(openfl.events.MouseEvent.MIDDLE_CLICK)
+@:event(openfl.events.MouseEvent.MIDDLE_MOUSE_DOWN)
+@:event(openfl.events.MouseEvent.MIDDLE_MOUSE_UP)
+@:event(openfl.events.MouseEvent.MOUSE_DOWN)
+@:event(openfl.events.MouseEvent.MOUSE_MOVE)
+@:event(openfl.events.MouseEvent.MOUSE_OUT)
+@:event(openfl.events.MouseEvent.MOUSE_OVER)
+@:event(openfl.events.MouseEvent.MOUSE_UP)
+@:event(openfl.events.MouseEvent.MOUSE_WHEEL)
+@:event(openfl.events.MouseEvent.RELEASE_OUTSIDE)
+@:event(openfl.events.MouseEvent.RIGHT_CLICK)
+@:event(openfl.events.MouseEvent.RIGHT_MOUSE_DOWN)
+@:event(openfl.events.MouseEvent.RIGHT_MOUSE_UP)
+@:event(openfl.events.MouseEvent.ROLL_OVER)
+@:event(openfl.events.MouseEvent.ROLL_OUT)
+@:event(openfl.events.TextEvent.TEXT_INPUT)
+@:event(openfl.events.TouchEvent.TOUCH_BEGIN)
+@:event(openfl.events.TouchEvent.TOUCH_END)
+@:event(openfl.events.TouchEvent.TOUCH_MOVE)
+@:event(openfl.events.TouchEvent.TOUCH_OUT)
+@:event(openfl.events.TouchEvent.TOUCH_OVER)
+@:event(openfl.events.TouchEvent.TOUCH_ROLL_OUT)
+@:event(openfl.events.TouchEvent.TOUCH_ROLL_OVER)
+@:event(openfl.events.TouchEvent.TOUCH_TAP)
+#if air
+@:event(openfl.events.MouseEvent.CONTEXT_MENU)
+@:event(openfl.events.TouchEvent.PROXIMITY_BEGIN)
+@:event(openfl.events.TouchEvent.PROXIMITY_END)
+@:event(openfl.events.TouchEvent.PROXIMITY_MOVE)
+@:event(openfl.events.TouchEvent.PROXIMITY_OUT)
+@:event(openfl.events.TouchEvent.PROXIMITY_OVER)
+@:event(openfl.events.TouchEvent.PROXIMITY_ROLL_OUT)
+@:event(openfl.events.TouchEvent.PROXIMITY_ROLL_OVER)
+#end
 class ValidatingSprite extends Sprite implements IValidating {
 	private function new() {
 		super();
@@ -31,15 +91,22 @@ class ValidatingSprite extends Sprite implements IValidating {
 	private var _validating:Bool = false;
 	private var _allInvalid:Bool = false;
 	private var _allInvalidDelayed:Bool = false;
-	private var _invalidationFlags:Map<String, Bool> = new Map();
-	private var _delayedInvalidationFlags:Map<String, Bool> = new Map();
+	private var _invalidationFlags:Map<InvalidationFlag, Bool> = new Map();
+	private var _delayedInvalidationFlags:Map<InvalidationFlag, Bool> = new Map();
 	private var _setInvalidCount:Int = 0;
 	private var _validationQueue:ValidationQueue = null;
+
+	private var _depth:Int = -1;
 
 	/**
 		@see `feathers.core.IValidating.depth`
 	**/
-	public var depth(default, null):Int = -1;
+	@:flash.property
+	public var depth(get, never):Int;
+
+	private function get_depth():Int {
+		return this._depth;
+	}
 
 	/**
 		Indicates whether the control is pending validation or not. By default,
@@ -57,7 +124,7 @@ class ValidatingSprite extends Sprite implements IValidating {
 
 		@since 1.0.0
 	**/
-	public function isInvalid(flag:String = null):Bool {
+	public function isInvalid(?flag:InvalidationFlag):Bool {
 		if (this._allInvalid) {
 			return true;
 		}
@@ -66,6 +133,22 @@ class ValidatingSprite extends Sprite implements IValidating {
 			return this._invalidationFlags.keys().hasNext();
 		}
 		return this._invalidationFlags.exists(flag);
+	}
+
+	@:noCompletion
+	private var _ignoreInvalidationFlags = false;
+
+	/**
+		Calls a function that temporarily disables invalidation. In other words,
+		calls to `setInvalid()` will be ignored until the function returns.
+
+		@since 1.0.0
+	**/
+	public function runWithoutInvalidation(callback:() -> Void):Void {
+		var oldIgnoreValidation = this._ignoreInvalidationFlags;
+		this._ignoreInvalidationFlags = true;
+		callback();
+		this._ignoreInvalidationFlags = oldIgnoreValidation;
 	}
 
 	/**
@@ -90,7 +173,10 @@ class ValidatingSprite extends Sprite implements IValidating {
 
 		@since 1.0.0
 	**/
-	public function setInvalid(flag:String = null):Void {
+	public function setInvalid(?flag:InvalidationFlag):Void {
+		if (this._ignoreInvalidationFlags) {
+			return;
+		}
 		var alreadyInvalid = this.isInvalid();
 		var alreadyDelayedInvalid = false;
 		if (this._validating) {
@@ -186,7 +272,10 @@ class ValidatingSprite extends Sprite implements IValidating {
 		@since 1.0.0
 	**/
 	@:dox(show)
-	private function setInvalidationFlag(flag:String):Void {
+	private function setInvalidationFlag(flag:InvalidationFlag):Void {
+		if (this._ignoreInvalidationFlags) {
+			return;
+		}
 		if (this._invalidationFlags.exists(flag)) {
 			return;
 		}
@@ -213,7 +302,7 @@ class ValidatingSprite extends Sprite implements IValidating {
 	private function update():Void {}
 
 	private function validatingSprite_addedToStageHandler(event:Event):Void {
-		this.depth = DisplayUtil.getDisplayObjectDepthFromStage(this);
+		this._depth = DisplayUtil.getDisplayObjectDepthFromStage(this);
 		this._validationQueue = ValidationQueue.forStage(this.stage);
 		if (this.isInvalid()) {
 			this._setInvalidCount = 0;
@@ -223,7 +312,7 @@ class ValidatingSprite extends Sprite implements IValidating {
 	}
 
 	private function validatingSprite_removedFromStageHandler(event:Event):Void {
-		this.depth = -1;
+		this._depth = -1;
 		this._validationQueue = null;
 	}
 }

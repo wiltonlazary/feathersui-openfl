@@ -4,7 +4,10 @@ import com.feathersui.components.views.ButtonScreen;
 import com.feathersui.components.views.CalloutScreen;
 import com.feathersui.components.views.CheckScreen;
 import com.feathersui.components.views.ComboBoxScreen;
+import com.feathersui.components.views.DrawerScreen;
 import com.feathersui.components.views.GridViewScreen;
+import com.feathersui.components.views.GroupListViewScreen;
+import com.feathersui.components.views.HDividedBoxScreen;
 import com.feathersui.components.views.LabelScreen;
 import com.feathersui.components.views.ListViewScreen;
 import com.feathersui.components.views.MainMenu;
@@ -19,14 +22,15 @@ import com.feathersui.components.views.SliderScreen;
 import com.feathersui.components.views.TabBarScreen;
 import com.feathersui.components.views.TabNavigatorScreen;
 import com.feathersui.components.views.TextAreaScreen;
+import com.feathersui.components.views.TextCalloutScreen;
 import com.feathersui.components.views.TextInputScreen;
 import com.feathersui.components.views.ToggleSwitchScreen;
 import com.feathersui.components.views.TreeViewScreen;
+import com.feathersui.components.views.VDividedBoxScreen;
 import feathers.controls.Application;
 import feathers.controls.navigators.Route;
 import feathers.controls.navigators.RouterAction;
 import feathers.controls.navigators.RouterNavigator;
-import feathers.motion.transitions.SlideTransitions;
 import openfl.events.Event;
 
 class Main extends Application {
@@ -44,9 +48,6 @@ class Main extends Application {
 		this._navigator.basePath = "/samples/haxe-openfl/components-explorer";
 		#end
 		this.addChild(this._navigator);
-
-		this._navigator.backTransition = SlideTransitions.right();
-		this._navigator.forwardTransition = SlideTransitions.left();
 
 		var mainMenu = Route.withClass(ViewPaths.MAIN_MENU, MainMenu, [Event.CHANGE => NewAction(createPushPathAction)]);
 		this._navigator.addRoute(mainMenu);
@@ -66,8 +67,20 @@ class Main extends Application {
 		var comboBox = Route.withClass(ViewPaths.COMBO_BOX, ComboBoxScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
 		this._navigator.addRoute(comboBox);
 
+		var hDividedBox = Route.withClass(ViewPaths.HORIZONTAL_DIVIDED_BOX, HDividedBoxScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
+		this._navigator.addRoute(hDividedBox);
+
+		var vDividedBox = Route.withClass(ViewPaths.VERTICAL_DIVIDED_BOX, VDividedBoxScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
+		this._navigator.addRoute(vDividedBox);
+
+		var drawer = Route.withClass(ViewPaths.DRAWER, DrawerScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
+		this._navigator.addRoute(drawer);
+
 		var gridView = Route.withClass(ViewPaths.GRID_VIEW, GridViewScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
 		this._navigator.addRoute(gridView);
+
+		var groupListView = Route.withClass(ViewPaths.GROUP_LIST_VIEW, GroupListViewScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
+		this._navigator.addRoute(groupListView);
 
 		var label = Route.withClass(ViewPaths.LABEL, LabelScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
 		this._navigator.addRoute(label);
@@ -107,6 +120,9 @@ class Main extends Application {
 
 		var textArea = Route.withClass(ViewPaths.TEXT_AREA, TextAreaScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
 		this._navigator.addRoute(textArea);
+
+		var textCallout = Route.withClass(ViewPaths.TEXT_CALLOUT, TextCalloutScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
+		this._navigator.addRoute(textCallout);
 
 		var textInput = Route.withClass(ViewPaths.TEXT_INPUT, TextInputScreen, [Event.COMPLETE => createBackAction(ViewPaths.MAIN_MENU)]);
 		this._navigator.addRoute(textInput);

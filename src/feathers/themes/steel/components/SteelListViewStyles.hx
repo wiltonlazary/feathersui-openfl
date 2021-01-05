@@ -31,30 +31,32 @@ class SteelListViewStyles {
 			return;
 		}
 
-		function styleListViewWithWithBorderVariant(listView:ListView):Void {
+		function styleListViewWithBorderVariant(listView:ListView):Void {
 			var isDesktop = DeviceUtil.isDesktop();
 
 			listView.autoHideScrollBars = !isDesktop;
 			listView.fixedScrollBars = isDesktop;
 
 			if (listView.layout == null) {
-				listView.layout = new VerticalListLayout();
+				var layout = new VerticalListLayout();
+				layout.requestedRowCount = 5.0;
+				listView.layout = layout;
 			}
 
 			if (listView.backgroundSkin == null) {
 				var backgroundSkin = new RectangleSkin();
 				backgroundSkin.fill = theme.getContainerFill();
 				backgroundSkin.border = theme.getContainerBorder();
-				backgroundSkin.width = 160.0;
-				backgroundSkin.height = 160.0;
+				backgroundSkin.width = 10.0;
+				backgroundSkin.height = 10.0;
 				listView.backgroundSkin = backgroundSkin;
 			}
 
 			if (listView.focusRectSkin == null) {
-				var skin = new RectangleSkin();
-				skin.fill = null;
-				skin.border = theme.getFocusBorder();
-				listView.focusRectSkin = skin;
+				var focusRectSkin = new RectangleSkin();
+				focusRectSkin.fill = null;
+				focusRectSkin.border = theme.getFocusBorder();
+				listView.focusRectSkin = focusRectSkin;
 			}
 
 			listView.paddingTop = 1.0;
@@ -63,29 +65,31 @@ class SteelListViewStyles {
 			listView.paddingLeft = 1.0;
 		}
 
-		function styleListViewWithWithBorderlessVariant(listView:ListView):Void {
+		function styleListViewWithBorderlessVariant(listView:ListView):Void {
 			var isDesktop = DeviceUtil.isDesktop();
 
 			listView.autoHideScrollBars = !isDesktop;
 			listView.fixedScrollBars = isDesktop;
 
 			if (listView.layout == null) {
-				listView.layout = new VerticalListLayout();
+				var layout = new VerticalListLayout();
+				layout.requestedRowCount = 5.0;
+				listView.layout = layout;
 			}
 
 			if (listView.backgroundSkin == null) {
 				var backgroundSkin = new RectangleSkin();
 				backgroundSkin.fill = theme.getContainerFill();
-				backgroundSkin.width = 160.0;
-				backgroundSkin.height = 160.0;
+				backgroundSkin.width = 10.0;
+				backgroundSkin.height = 10.0;
 				listView.backgroundSkin = backgroundSkin;
 			}
 
 			if (listView.focusRectSkin == null) {
-				var skin = new RectangleSkin();
-				skin.fill = null;
-				skin.border = theme.getFocusBorder();
-				listView.focusRectSkin = skin;
+				var focusRectSkin = new RectangleSkin();
+				focusRectSkin.fill = null;
+				focusRectSkin.border = theme.getFocusBorder();
+				listView.focusRectSkin = focusRectSkin;
 			}
 		}
 
@@ -94,17 +98,17 @@ class SteelListViewStyles {
 			styleProvider.setStyleFunction(ListView, null, function(listView:ListView):Void {
 				var isDesktop = DeviceUtil.isDesktop();
 				if (isDesktop) {
-					styleListViewWithWithBorderVariant(listView);
+					styleListViewWithBorderVariant(listView);
 				} else {
-					styleListViewWithWithBorderlessVariant(listView);
+					styleListViewWithBorderlessVariant(listView);
 				}
 			});
 		}
 		if (styleProvider.getStyleFunction(ListView, ListView.VARIANT_BORDER) == null) {
-			styleProvider.setStyleFunction(ListView, ListView.VARIANT_BORDER, styleListViewWithWithBorderVariant);
+			styleProvider.setStyleFunction(ListView, ListView.VARIANT_BORDER, styleListViewWithBorderVariant);
 		}
 		if (styleProvider.getStyleFunction(ListView, ListView.VARIANT_BORDERLESS) == null) {
-			styleProvider.setStyleFunction(ListView, ListView.VARIANT_BORDERLESS, styleListViewWithWithBorderlessVariant);
+			styleProvider.setStyleFunction(ListView, ListView.VARIANT_BORDERLESS, styleListViewWithBorderlessVariant);
 		}
 	}
 }

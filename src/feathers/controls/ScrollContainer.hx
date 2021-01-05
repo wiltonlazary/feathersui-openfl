@@ -8,6 +8,7 @@
 
 package feathers.controls;
 
+import openfl.errors.RangeError;
 import feathers.controls.supportClasses.BaseScrollContainer;
 import feathers.controls.supportClasses.LayoutViewPort;
 import feathers.core.IFocusContainer;
@@ -49,6 +50,7 @@ import openfl.events.Event;
 
 	@since 1.0.0
 **/
+@:meta(DefaultProperty("xmlContent"))
 @defaultXmlProperty("xmlContent")
 @:styleContext
 class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
@@ -95,45 +97,58 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 	@:style
 	public var layout:ILayout = null;
 
+	private var _xmlContent:Array<DisplayObject> = null;
+
 	@:dox(hide)
 	@:noCompletion
-	public var xmlContent(default, set):Array<DisplayObject> = null;
+	@:flash.property
+	public var xmlContent(get, set):Array<DisplayObject>;
+
+	private function get_xmlContent():Array<DisplayObject> {
+		return this._xmlContent;
+	}
 
 	private function set_xmlContent(value:Array<DisplayObject>):Array<DisplayObject> {
-		if (this.xmlContent == value) {
-			return this.xmlContent;
+		if (this._xmlContent == value) {
+			return this._xmlContent;
 		}
-		if (this.xmlContent != null) {
-			for (child in this.xmlContent) {
+		if (this._xmlContent != null) {
+			for (child in this._xmlContent) {
 				this.removeChild(child);
 			}
 		}
-		this.xmlContent = value;
-		if (this.xmlContent != null) {
-			for (child in this.xmlContent) {
+		this._xmlContent = value;
+		if (this._xmlContent != null) {
+			for (child in this._xmlContent) {
 				this.addChild(child);
 			}
 		}
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.xmlContent;
+		this.setInvalid(STYLES);
+		return this._xmlContent;
 	}
+
+	private var _childFocusEnabled:Bool = true;
 
 	/**
 		@see `feathers.core.IFocusContainer.childFocusEnabled`
 	**/
-	@:isVar
-	public var childFocusEnabled(get, set):Bool = true;
+	@:flash.property
+	public var childFocusEnabled(get, set):Bool;
 
 	private function get_childFocusEnabled():Bool {
-		return this.enabled && this.childFocusEnabled;
+		return this._enabled && this._childFocusEnabled;
 	}
 
 	private function set_childFocusEnabled(value:Bool):Bool {
-		this.childFocusEnabled = value;
-		return this.childFocusEnabled;
+		if (this._childFocusEnabled == value) {
+			return this._childFocusEnabled;
+		}
+		this._childFocusEnabled = value;
+		return this._childFocusEnabled;
 	}
 
-	public var numRawChildren(get, null):Int;
+	@:flash.property
+	public var numRawChildren(get, never):Int;
 
 	private function get_numRawChildren():Int {
 		var oldBypass = this._displayListBypassEnabled;
@@ -166,18 +181,20 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 		if (oldIndex == index) {
 			return child;
 		}
+		if (oldIndex >= 0) {
+			this.items.remove(child);
+		}
+		// insert into the array before adding as a child, so that display list
+		// APIs work in an Event.ADDED listener
+		this.items.insert(index, child);
+		var result = this.layoutViewPort.addChildAt(child, index);
+		// add listeners or access properties after adding a child
+		// because adding the child may result in better errors (like for null)
 		child.addEventListener(Event.RESIZE, scrollContainer_child_resizeHandler);
 		if (Std.is(child, ILayoutObject)) {
 			child.addEventListener(FeathersEvent.LAYOUT_DATA_CHANGE, scrollContainer_child_layoutDataChangeHandler, false, 0, true);
 		}
-		if (oldIndex >= 0) {
-			this.items.remove(child);
-		}
-		// insert into the array first, so that display list APIs work in an
-		// Event.ADDED listener
-		this.items.insert(index, child);
-		var result = this.layoutViewPort.addChildAt(child, index);
-		this.setInvalid(InvalidationFlag.LAYOUT);
+		this.setInvalid(LAYOUT);
 		return result;
 	}
 
@@ -188,13 +205,15 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 		if (child == null || child.parent != this.layoutViewPort) {
 			return child;
 		}
+		this.items.remove(child);
+		var result = this.layoutViewPort.removeChild(child);
+		// remove listeners or access properties after removing a child
+		// because removing the child may result in better errors (like for null)
 		child.removeEventListener(Event.RESIZE, scrollContainer_child_resizeHandler);
 		if (Std.is(child, ILayoutObject)) {
 			child.removeEventListener(FeathersEvent.LAYOUT_DATA_CHANGE, scrollContainer_child_layoutDataChangeHandler);
 		}
-		this.items.remove(child);
-		var result = this.layoutViewPort.removeChild(child);
-		this.setInvalid(InvalidationFlag.LAYOUT);
+		this.setInvalid(LAYOUT);
 		return result;
 	}
 
@@ -225,6 +244,18 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 		}
 		this.items.remove(child);
 		this.items.insert(index, child);
+	}
+
+	override public function getChildByName(name:String):DisplayObject {
+		if (!this._displayListBypassEnabled) {
+			return super.getChildByName(name);
+		}
+		for (child in this.items) {
+			if (child.name == name) {
+				return child;
+			}
+		}
+		return null;
 	}
 
 	private function addRawChild(child:DisplayObject):DisplayObject {
@@ -290,6 +321,39 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 		this._displayListBypassEnabled = oldBypass;
 	}
 
+	override public function removeChildren(beginIndex:Int = 0, endIndex:Int = 0x7FFFFFFF):Void {
+		if (!this._displayListBypassEnabled) {
+			return super.removeChildren(beginIndex, endIndex);
+		}
+
+		if (endIndex == 0x7FFFFFFF) {
+			endIndex = this.items.length - 1;
+
+			if (endIndex < 0) {
+				return;
+			}
+		}
+
+		if (beginIndex > this.items.length - 1) {
+			return;
+		} else if (endIndex < beginIndex || beginIndex < 0 || endIndex > this.items.length) {
+			throw new RangeError("The supplied index is out of bounds.");
+		}
+
+		var numRemovals = endIndex - beginIndex;
+		while (numRemovals >= 0) {
+			this.removeChildAt(beginIndex);
+			numRemovals--;
+		}
+	}
+
+	private function removeRawChildren(beginIndex:Int = 0, endIndex:Int = 0x7FFFFFFF):Void {
+		var oldBypass = this._displayListBypassEnabled;
+		this._displayListBypassEnabled = false;
+		this.removeChildren(beginIndex, endIndex);
+		this._displayListBypassEnabled = oldBypass;
+	}
+
 	private function initializeScrollContainerTheme():Void {
 		SteelScrollContainerStyles.initialize();
 	}
@@ -311,8 +375,8 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 		// until it calls super.update().
 		this._ignoreChildChangesButSetFlags = false;
 
-		var layoutInvalid = this.isInvalid(InvalidationFlag.LAYOUT);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var layoutInvalid = this.isInvalid(LAYOUT);
+		var stylesInvalid = this.isInvalid(STYLES);
 
 		if (layoutInvalid || stylesInvalid) {
 			this.layoutViewPort.layout = this.layout;
@@ -348,10 +412,10 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 			return;
 		}
 		if (this._ignoreChildChangesButSetFlags) {
-			this.setInvalidationFlag(InvalidationFlag.LAYOUT);
+			this.setInvalidationFlag(LAYOUT);
 			return;
 		}
-		this.setInvalid(InvalidationFlag.LAYOUT);
+		this.setInvalid(LAYOUT);
 	}
 
 	private function scrollContainer_child_resizeHandler(event:Event):Void {
@@ -359,9 +423,9 @@ class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
 			return;
 		}
 		if (this._ignoreChildChangesButSetFlags) {
-			this.setInvalidationFlag(InvalidationFlag.LAYOUT);
+			this.setInvalidationFlag(LAYOUT);
 			return;
 		}
-		this.setInvalid(InvalidationFlag.LAYOUT);
+		this.setInvalid(LAYOUT);
 	}
 }

@@ -8,6 +8,8 @@
 
 package feathers.data;
 
+import feathers.controls.PageIndicator;
+
 /**
 	Represents the current state of a `PageIndicator` toggle button.
 
@@ -28,11 +30,18 @@ class PageIndicatorItemState {
 	}
 
 	/**
+		Returns a reference to the `PageIndicator` that contains this item.
+
+		@since 1.0.0
+	**/
+	public var owner:PageIndicator;
+
+	/**
 		The page index.
 
 		@since 1.0.0
 	**/
-	public var index(default, null):Int;
+	public var index:Int;
 
 	/**
 		Returns whether the button is selected or not.
@@ -41,5 +50,14 @@ class PageIndicatorItemState {
 
 		@since 1.0.0
 	**/
-	public var selected(default, null):Bool;
+	public var selected:Bool;
+
+	/**
+		Returns whether the item is enabled or not.
+
+		@see `feathers.core.IUIControl.enabled`
+
+		@since 1.0.0
+	**/
+	public var enabled:Bool;
 }

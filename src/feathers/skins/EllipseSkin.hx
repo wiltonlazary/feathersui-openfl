@@ -8,6 +8,9 @@
 
 package feathers.skins;
 
+import feathers.graphics.LineStyle;
+import feathers.graphics.FillStyle;
+
 /**
 	A skin for Feathers UI components that draws an ellipse. The ellipse's fill
 	and border may be styled.
@@ -16,12 +19,12 @@ package feathers.skins;
 **/
 class EllipseSkin extends BaseGraphicsPathSkin {
 	/**
-		Creates a new `CircleSkin` object.
+		Creates a new `EllipseSkin` object.
 
 		@since 1.0.0
 	**/
-	public function new() {
-		super();
+	public function new(?fill:FillStyle, ?border:LineStyle) {
+		super(fill, border);
 	}
 
 	override private function drawPath():Void {

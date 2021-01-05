@@ -7,7 +7,10 @@ class ViewPaths {
 	public static final CALLOUT = "/callout";
 	public static final CHECK = "/check";
 	public static final COMBO_BOX = "/combo-box";
+	public static final DRAWER = "/drawer";
 	public static final GRID_VIEW = "/grid-view";
+	public static final GROUP_LIST_VIEW = "/group-list-view";
+	public static final HORIZONTAL_DIVIDED_BOX = "/horizontal-divided-box";
 	public static final LABEL = "/label";
 	public static final LIST_VIEW = "/list-view";
 	public static final PAGE_INDICATOR = "/page-indicator";
@@ -21,7 +24,9 @@ class ViewPaths {
 	public static final TAB_BAR = "/tab-bar";
 	public static final TAB_NAVIGATOR = "/tab-navigator";
 	public static final TEXT_AREA = "/text-area";
+	public static final TEXT_CALLOUT = "/text-callout";
 	public static final TEXT_INPUT = "/text-input";
 	public static final TOGGLE_SWITCH = "/toggle-switch";
 	public static final TREE_VIEW = "/tree-view";
+	public static final VERTICAL_DIVIDED_BOX = "/vertical-divided-box";
 }

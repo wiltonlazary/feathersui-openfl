@@ -8,23 +8,28 @@
 
 package feathers.controls.dataRenderers;
 
+import openfl.display.InteractiveObject;
 import feathers.core.IFocusObject;
+import feathers.core.IPointerDelegate;
 import feathers.core.IValidating;
-import feathers.core.InvalidationFlag;
-import feathers.events.TriggerEvent;
+import feathers.layout.ILayoutIndexObject;
+import feathers.text.TextFormat;
 import feathers.themes.steel.components.SteelItemRendererStyles;
+import openfl.display.DisplayObject;
+import openfl.events.Event;
 import openfl.geom.Point;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
-import openfl.text.TextFormat;
 
 /**
 	A generic renderer for UI components that display data collections.
 
+	@see [Tutorial: How to use the ItemRenderer component](https://feathersui.com/learn/haxe-openfl/item-renderer/)
+
 	@since 1.0.0
 **/
 @:styleContext
-class ItemRenderer extends ToggleButton {
+class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements IDataRenderer implements IPointerDelegate {
 	/**
 		Creates a new `ItemRenderer` object.
 
@@ -34,15 +39,46 @@ class ItemRenderer extends ToggleButton {
 		initializeItemRendererTheme();
 
 		super();
+
+		// accessory views need to be accessible to mouse/touch
+		this.mouseChildren = true;
+		// for some reason, useHandCursor = false is not always respected
+		// so buttonMode needs to be false
+		this.buttonMode = false;
+
+		// toggling is handled by the owner component, like ListView
+		this.toggleable = false;
+	}
+
+	private var _data:Dynamic;
+
+	/**
+		@see `feathers.controls.dataRenderers.IDataRenderer.data`
+	**/
+	@:flash.property
+	public var data(get, set):Dynamic;
+
+	private function get_data():Dynamic {
+		return this._data;
+	}
+
+	private function set_data(value:Dynamic):Dynamic {
+		if (this._data == value) {
+			return this._data;
+		}
+		this._data = value;
+		this.setInvalid(DATA);
+		return this._data;
 	}
 
 	private var secondaryTextField:TextField;
-
 	private var _secondaryTextMeasuredWidth:Float;
 	private var _secondaryTextMeasuredHeight:Float;
 	private var _previousSecondaryText:String = null;
 	private var _previousSecondaryTextFormat:TextFormat = null;
+	private var _previousSecondarySimpleTextFormat:openfl.text.TextFormat = null;
 	private var _updatedSecondaryTextStyles = false;
+	private var _secondaryText:String;
 
 	/**
 		The optional secondary text displayed by the item renderer.
@@ -59,20 +95,63 @@ class ItemRenderer extends ToggleButton {
 
 		@since 1.0.0
 	**/
-	@:isVar
+	@:flash.property
 	public var secondaryText(get, set):String;
 
 	private function get_secondaryText():String {
-		return this.secondaryText;
+		return this._secondaryText;
 	}
 
 	private function set_secondaryText(value:String):String {
-		if (this.secondaryText == value) {
-			return this.secondaryText;
+		if (this._secondaryText == value) {
+			return this._secondaryText;
 		}
-		this.secondaryText = value;
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.secondaryText;
+		this._secondaryText = value;
+		this.setInvalid(DATA);
+		return this._secondaryText;
+	}
+
+	private var _layoutIndex:Int = -1;
+
+	/**
+		@see `feathers.layout.ILayoutIndexObject.layoutIndex`
+	**/
+	@:flash.property
+	public var layoutIndex(get, set):Int;
+
+	private function get_layoutIndex():Int {
+		return this._layoutIndex;
+	}
+
+	private function set_layoutIndex(value:Int):Int {
+		if (this._layoutIndex == value) {
+			return this._layoutIndex;
+		}
+		this._layoutIndex = value;
+		this.setInvalid(DATA);
+		this.setInvalid(STYLES);
+		return this._layoutIndex;
+	}
+
+	private var _pointerTarget:InteractiveObject;
+
+	/**
+		@see `feathers.core.IPointerDelegate.pointerTarget`
+	**/
+	@:flash.property
+	public var pointerTarget(get, set):InteractiveObject;
+
+	private function get_pointerTarget():InteractiveObject {
+		return this._pointerTarget;
+	}
+
+	private function set_pointerTarget(value:InteractiveObject):InteractiveObject {
+		if (this._pointerTarget == value) {
+			return this._pointerTarget;
+		}
+		this._pointerTarget = value;
+		this.setInvalid(DATA);
+		return this._pointerTarget;
 	}
 
 	/**
@@ -90,64 +169,66 @@ class ItemRenderer extends ToggleButton {
 		@since 1.0.0
 	**/
 	@:style
-	public var secondaryTextFormat:TextFormat = null;
+	public var secondaryTextFormat:AbstractTextFormat = null;
 
 	/**
-		The font styles used to render the button's text when the button is
-		disabled.
+		The font styles used to render the button's secondary text when the
+		button is disabled.
 
-		In the following example, the button's disabled text formatting is
-		customized:
+		In the following example, the button's secondary disabled text
+		formatting is customized:
 
 		```hx
 		button.enabled = false;
-		button.disabledTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		button.disabledSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
 		```
 
-		The next example sets a disabled text format, but also provides a text
-		format for the `ToggleButtonState.DISABLED(true)` state that will be
-		used instead of the disabled text format:
+		The next example sets a disabled secondary text format, but also
+		provides a text format for the `ToggleButtonState.DISABLED(true)` state
+		that will be used instead of the disabled secondary text format:
 
 		```hx
-		button.disabledTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
-		button.setTextFormatForState(ToggleButtonState.DISABLED(true), new TextFormat("Helvetica", 20, 0xff0000));
+		button.disabledSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		button.setSecondaryTextFormatForState(ToggleButtonState.DISABLED(true), new TextFormat("Helvetica", 20, 0xff0000));
 		```
 
 		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
-		both the `disabledTextFormat` and `selectedTextFormat` are set, the
-		`disabledTextFormat` takes precedence over the `selectedTextFormat`.
+		both the `disabledSecondaryTextFormat` and `selectedSecondaryTextFormat`
+		are set, the `disabledSecondaryTextFormat` takes precedence over the
+		`selectedSecondaryTextFormat`.
 
 		@see `ItemRenderer.secondaryTextFormat`
 
 		@since 1.0.0
 	**/
 	@:style
-	public var disabledSecondaryTextFormat:TextFormat = null;
+	public var disabledSecondaryTextFormat:AbstractTextFormat = null;
 
 	/**
-		The font styles used to render the button's text when the button is
-		selected.
+		The font styles used to render the button's secondary text when the
+		button is selected.
 
-		In the following example, the button's selected text formatting is
-		customized:
+		In the following example, the button's selected secondary text
+		formatting is customized:
 
 		```hx
 		button.selected = true;
-		button.selectedTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
+		button.selectedSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
 		```
 
-		The next example sets a selected text format, but also provides a text
-		format for the `ToggleButtonState.DOWN(true)` state that will be used
-		instead of the selected text format:
+		The next example sets a selected secondary text format, but also
+		provides a text format for the `ToggleButtonState.DOWN(true)` state that
+		will be used instead of the selected secondary text format:
 
 		```hx
-		button.selectedTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
-		button.setTextFormatForState(ToggleButtonState.DOWN(true), new TextFormat("Helvetica", 20, 0xcc0000));
+		button.selectedSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
+		button.setSecondaryTextFormatForState(ToggleButtonState.DOWN(true), new TextFormat("Helvetica", 20, 0xcc0000));
 		```
 
 		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
-		both the `disabledTextFormat` and `selectedTextFormat` are set, the
-		`disabledTextFormat` takes precedence over the `selectedTextFormat`.
+		both the `disabledSecondaryTextFormat` and `selectedSecondaryTextFormat`
+		are set, the `disabledSecondaryTextFormat` takes precedence over the
+		`selectedSecondaryTextFormat`.
 
 		@see `ItemRenderer.secondaryTextFormat`
 		@see `BasicToggleButton.selected`
@@ -155,43 +236,65 @@ class ItemRenderer extends ToggleButton {
 		@since 1.0.0
 	**/
 	@:style
-	public var selectedSecondaryTextFormat:TextFormat = null;
-
-	private var _stateToSecondaryTextFormat:Map<ToggleButtonState, TextFormat> = new Map();
+	public var selectedSecondaryTextFormat:AbstractTextFormat = null;
 
 	/**
-		Gets the text format to be used by the button when its `currentState`
-		property matches the specified state value.
+		The display object to use as the background skin when the alternate
+		skin is enabled.
 
-		If a text format is not defined for a specific state, returns `null`.
+		The following example passes a bitmap to use as an alternate background
+		skin:
 
-		@see `ToggleButton.setTextFormatForState()`
-		@see `ToggleButton.textFormat`
+		```hx
+		itemRenderer.alternateBackgroundSkin = new Bitmap(bitmapData);
+		```
+
+		@default null
+
+		@see `BasicButton.backgroundSkin`
+
+		@since 1.0.0
+
+	**/
+	@:style
+	public var alternateBackgroundSkin:DisplayObject = null;
+
+	private var _stateToSecondaryTextFormat:Map<ToggleButtonState, AbstractTextFormat> = new Map();
+
+	/**
+		Gets the secondary text format to be used by the button when its
+		`currentState` property matches the specified state value.
+
+		If a secondary text format is not defined for a specific state, returns
+		`null`.
+
+		@see `ToggleButton.setSecondaryTextFormatForState()`
+		@see `ToggleButton.secondaryTextFormat`
 		@see `ToggleButton.currentState`
 		@see `feathers.controls.ToggleButtonState`
 
 		@since 1.0.0
 	**/
-	public function getSecondaryTextFormatForState(state:ToggleButtonState):TextFormat {
+	public function getSecondaryTextFormatForState(state:ToggleButtonState):AbstractTextFormat {
 		return this._stateToSecondaryTextFormat.get(state);
 	}
 
 	/**
-		Set the text format to be used by the button when its `currentState`
-		property matches the specified state value.
+		Set the secondary text format to be used by the button when its
+		`currentState` property matches the specified state value.
 
-		If a text format is not defined for a specific state, the value of the
-		`textFormat` property will be used instead.
+		If a secondary text format is not defined for a specific state, the
+		value of the `secondaryTextFormat` property will be used instead.
 
 		@see `ItemRenderer.getSecondaryTextFormatForState()`
-		@see `ItemRenderer.secondaryextFormat`
+		@see `ItemRenderer.secondaryTextFormat`
 		@see `ItemRenderer.currentState`
 		@see `feathers.controls.ToggleButtonState`
 
 		@since 1.0.0
 	**/
 	@style
-	public function setSecondaryTextFormatForState(state:ToggleButtonState, textFormat:TextFormat):Void {
+	public function setSecondaryTextFormatForState(state:ToggleButtonState, textFormat:AbstractTextFormat):Void {
 		if (!this.setStyle("setSecondaryTextFormatForState", state)) {
 			return;
 		}
@@ -200,7 +303,7 @@ class ItemRenderer extends ToggleButton {
 		} else {
 			this._stateToSecondaryTextFormat.set(state, textFormat);
 		}
-		this.setInvalid(InvalidationFlag.STYLES);
+		this.setInvalid(STYLES);
 	}
 
 	private function initializeItemRendererTheme():Void {
@@ -214,13 +317,14 @@ class ItemRenderer extends ToggleButton {
 	}
 
 	override private function update():Void {
-		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var dataInvalid = this.isInvalid(DATA);
+		var stateInvalid = this.isInvalid(STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
 
 		this._updatedSecondaryTextStyles = false;
 
 		if (dataInvalid) {
+			this._pointerToState.target = (this._pointerTarget != null) ? this._pointerTarget : this;
 			this.refreshSecondaryTextField();
 		}
 
@@ -236,7 +340,7 @@ class ItemRenderer extends ToggleButton {
 	}
 
 	private function refreshSecondaryTextField():Void {
-		if (this.secondaryText == null) {
+		if (this._secondaryText == null) {
 			if (this.secondaryTextField != null) {
 				this.removeChild(this.secondaryTextField);
 				this.secondaryTextField = null;
@@ -261,51 +365,59 @@ class ItemRenderer extends ToggleButton {
 			this._updatedSecondaryTextStyles = true;
 		}
 		var textFormat = this.getCurrentSecondaryTextFormat();
-		if (textFormat == this._previousSecondaryTextFormat) {
+		var simpleTextFormat = textFormat != null ? textFormat.toSimpleTextFormat() : null;
+		if (simpleTextFormat == this._previousSecondarySimpleTextFormat) {
 			// nothing to refresh
 			return;
 		}
-		if (textFormat != null) {
-			this.secondaryTextField.defaultTextFormat = textFormat;
-			this._updatedSecondaryTextStyles = true;
-			this._previousSecondaryTextFormat = textFormat;
+		if (this._previousTextFormat != null) {
+			this._previousTextFormat.removeEventListener(Event.CHANGE, itemRenderer_secondaryTextFormat_changeHandler);
 		}
+		if (textFormat != null) {
+			textFormat.addEventListener(Event.CHANGE, itemRenderer_secondaryTextFormat_changeHandler, false, 0, true);
+			this.secondaryTextField.defaultTextFormat = simpleTextFormat;
+			this._updatedSecondaryTextStyles = true;
+		}
+		this._previousSecondaryTextFormat = textFormat;
+		this._previousSecondarySimpleTextFormat = simpleTextFormat;
 	}
 
 	private function refreshSecondaryText():Void {
 		if (this.secondaryTextField == null) {
 			return;
 		}
-		var hasText = this.secondaryText != null && this.secondaryText.length > 0;
+		var hasText = this._secondaryText != null && this._secondaryText.length > 0;
 		this.secondaryTextField.visible = hasText;
-		if (this.secondaryText == this._previousSecondaryText && !this._updatedSecondaryTextStyles) {
+		if (this._secondaryText == this._previousSecondaryText && !this._updatedSecondaryTextStyles) {
 			// nothing to refresh
 			return;
 		}
-		if (hasText) {
-			this.secondaryTextField.text = this.secondaryText;
-		} else {
-			this.secondaryTextField.text = "\u8203"; // zero-width space
-		}
+		// set autoSize before text because setting text first can trigger an
+		// extra text engine reflow
 		this.secondaryTextField.autoSize = TextFieldAutoSize.LEFT;
+		if (hasText) {
+			this.secondaryTextField.text = this._secondaryText;
+		} else {
+			this.secondaryTextField.text = "\u200b"; // zero-width space
+		}
 		this._secondaryTextMeasuredWidth = this.secondaryTextField.width;
 		this._secondaryTextMeasuredHeight = this.secondaryTextField.height;
 		this.secondaryTextField.autoSize = TextFieldAutoSize.NONE;
 		if (!hasText) {
 			this.secondaryTextField.text = "";
 		}
-		this._previousSecondaryText = this.secondaryText;
+		this._previousSecondaryText = this._secondaryText;
 	}
 
 	private function getCurrentSecondaryTextFormat():TextFormat {
-		var result = this._stateToSecondaryTextFormat.get(this.currentState);
+		var result = this._stateToSecondaryTextFormat.get(this._currentState);
 		if (result != null) {
 			return result;
 		}
-		if (!this.enabled && this.disabledSecondaryTextFormat != null) {
+		if (!this._enabled && this.disabledSecondaryTextFormat != null) {
 			return this.disabledSecondaryTextFormat;
 		}
-		if (this.selected && this.selectedSecondaryTextFormat != null) {
+		if (this._selected && this.selectedSecondaryTextFormat != null) {
 			return this.selectedSecondaryTextFormat;
 		}
 		return this.secondaryTextFormat;
@@ -335,7 +447,7 @@ class ItemRenderer extends ToggleButton {
 			cast(this._currentIcon, IValidating).validateNow();
 		}
 		this._ignoreIconResizes = oldIgnoreIconResizes;
-		if (this.text == null || this.text.length == 0) {
+		if (this._text == null || this._text.length == 0) {
 			return;
 		}
 
@@ -401,13 +513,13 @@ class ItemRenderer extends ToggleButton {
 		if (adjustedGap == Math.POSITIVE_INFINITY) {
 			adjustedGap = this.minGap;
 		}
-		var contentWidth = this.text != null ? this._textMeasuredWidth : 0.0;
-		if (this.secondaryText != null) {
+		var contentWidth = this._text != null ? this._textMeasuredWidth : 0.0;
+		if (this._secondaryText != null) {
 			contentWidth = Math.max(contentWidth, this._secondaryTextMeasuredWidth);
 		}
 		if (this._currentIcon != null) {
 			if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentWidth += adjustedGap;
 				}
 				contentWidth += this._currentIcon.width;
@@ -424,16 +536,16 @@ class ItemRenderer extends ToggleButton {
 			adjustedGap = this.minGap;
 		}
 
-		var contentHeight = this.text != null ? this._textMeasuredHeight : 0.0;
-		if (this.secondaryText != null) {
+		var contentHeight = this._text != null ? this._textMeasuredHeight : 0.0;
+		if (this._secondaryText != null) {
 			contentHeight += this._secondaryTextMeasuredHeight;
-			if (this.text != null) {
+			if (this._text != null) {
 				contentHeight += adjustedGap;
 			}
 		}
 		if (this._currentIcon != null) {
 			if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentHeight += adjustedGap;
 				}
 				contentHeight += this._currentIcon.height;
@@ -449,13 +561,13 @@ class ItemRenderer extends ToggleButton {
 		if (adjustedGap == Math.POSITIVE_INFINITY) {
 			adjustedGap = this.minGap;
 		}
-		var contentMinWidth = this.text != null ? this._textMeasuredWidth : 0.0;
-		if (this.secondaryText != null) {
+		var contentMinWidth = this._text != null ? this._textMeasuredWidth : 0.0;
+		if (this._secondaryText != null) {
 			contentMinWidth = Math.max(contentMinWidth, this._secondaryTextMeasuredWidth);
 		}
 		if (this._currentIcon != null) {
 			if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentMinWidth += adjustedGap;
 				}
 				contentMinWidth += this._currentIcon.width;
@@ -471,16 +583,16 @@ class ItemRenderer extends ToggleButton {
 		if (adjustedGap == Math.POSITIVE_INFINITY) {
 			adjustedGap = this.minGap;
 		}
-		var contentMinHeight = this.text != null ? this._textMeasuredHeight : 0.0;
-		if (this.secondaryText != null) {
+		var contentMinHeight = this._text != null ? this._textMeasuredHeight : 0.0;
+		if (this._secondaryText != null) {
 			contentMinHeight += this._secondaryTextMeasuredHeight;
-			if (this.text != null) {
+			if (this._text != null) {
 				contentMinHeight += adjustedGap;
 			}
 		}
 		if (this._currentIcon != null) {
 			if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
-				if (this.text != null) {
+				if (this._text != null) {
 					contentMinHeight += adjustedGap;
 				}
 				contentMinHeight += this._currentIcon.height;
@@ -489,6 +601,17 @@ class ItemRenderer extends ToggleButton {
 			}
 		}
 		return contentMinHeight;
+	}
+
+	override private function getCurrentBackgroundSkin():DisplayObject {
+		var result = this._stateToSkin.get(this._currentState);
+		if (result != null) {
+			return result;
+		}
+		if (this.alternateBackgroundSkin != null && (this._layoutIndex % 2) == 1) {
+			return this.alternateBackgroundSkin;
+		}
+		return this.backgroundSkin;
 	}
 
 	override private function layoutContent():Void {
@@ -525,14 +648,7 @@ class ItemRenderer extends ToggleButton {
 		}
 	}
 
-	override private function basicToggleButton_triggerHandler(event:TriggerEvent):Void {
-		if (!this.enabled) {
-			event.stopImmediatePropagation();
-			return;
-		}
-		if (!this.toggleable || this.selected) {
-			return;
-		}
-		this.selected = !this.selected;
+	private function itemRenderer_secondaryTextFormat_changeHandler(event:Event):Void {
+		this.setInvalid(STYLES);
 	}
 }

@@ -8,32 +8,37 @@
 
 package feathers.controls;
 
-import openfl.ui.Keyboard;
-import openfl.events.KeyboardEvent;
-import feathers.core.IFocusObject;
-import feathers.core.IIndexSelector;
-import feathers.core.IUIControl;
-import feathers.core.IStateContext;
-import feathers.core.IValidating;
-import feathers.core.IStateObserver;
-import openfl.display.DisplayObject;
-import feathers.events.TriggerEvent;
+import feathers.events.TabBarEvent;
 import feathers.controls.dataRenderers.IDataRenderer;
 import feathers.core.FeathersControl;
 import feathers.core.IDataSelector;
+import feathers.core.IFocusObject;
+import feathers.core.IIndexSelector;
+import feathers.core.IUIControl;
+import feathers.core.IValidating;
 import feathers.core.InvalidationFlag;
 import feathers.data.IFlatCollection;
 import feathers.data.TabBarItemState;
 import feathers.events.FeathersEvent;
 import feathers.events.FlatCollectionEvent;
+import feathers.events.TriggerEvent;
 import feathers.layout.ILayout;
 import feathers.layout.LayoutBoundsResult;
 import feathers.layout.Measurements;
+import feathers.skins.IProgrammaticSkin;
 import feathers.themes.steel.components.SteelTabBarStyles;
 import feathers.utils.DisplayObjectRecycler;
 import haxe.ds.ObjectMap;
+import openfl.display.DisplayObject;
 import openfl.errors.IllegalOperationError;
 import openfl.events.Event;
+import openfl.events.KeyboardEvent;
+import openfl.ui.Keyboard;
+#if (openfl >= "9.1.0")
+import openfl.utils.ObjectPool;
+#else
+import openfl._internal.utils.ObjectPool;
+#end
 
 /**
 	A line of tabs, where one may be selected at a time.
@@ -66,15 +71,23 @@ import openfl.events.Event;
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
+@:event(feathers.events.TabBarEvent.ITEM_TRIGGER)
 @:access(feathers.data.TabBarItemState)
+@:meta(DefaultProperty("dataProvider"))
+@defaultXmlProperty("dataProvider")
 @:styleContext
 class TabBar extends FeathersControl implements IIndexSelector implements IDataSelector<Dynamic> implements IFocusObject {
-	private static final INVALIDATION_FLAG_TAB_FACTORY = "tabFactory";
+	private static final INVALIDATION_FLAG_TAB_FACTORY = InvalidationFlag.CUSTOM("tabFactory");
 
 	/**
 		The variant used to style the tab child components in a theme.
 
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@see `TabBar.customTabVariant`
+
+		@since 1.0.0
 	**/
 	public static final CHILD_VARIANT_TAB = "tabBar_tab";
 
@@ -98,6 +111,8 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 
 		this.addEventListener(KeyboardEvent.KEY_DOWN, tabBar_keyDownHandler);
 	}
+
+	private var _dataProvider:IFlatCollection<Dynamic> = null;
 
 	/**
 		The collection of data displayed by the tab bar.
@@ -123,98 +138,132 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 
 		@since 1.0.0
 	**/
-	public var dataProvider(default, set):IFlatCollection<Dynamic> = null;
+	@:flash.property
+	public var dataProvider(get, set):IFlatCollection<Dynamic>;
+
+	private function get_dataProvider():IFlatCollection<Dynamic> {
+		return this._dataProvider;
+	}
 
 	private function set_dataProvider(value:IFlatCollection<Dynamic>):IFlatCollection<Dynamic> {
-		if (this.dataProvider == value) {
-			return this.dataProvider;
+		if (this._dataProvider == value) {
+			return this._dataProvider;
 		}
-		if (this.dataProvider != null) {
-			this.dataProvider.removeEventListener(Event.CHANGE, dataProvider_changeHandler);
-			this.dataProvider.removeEventListener(FlatCollectionEvent.ADD_ITEM, dataProvider_addItemHandler);
-			this.dataProvider.removeEventListener(FlatCollectionEvent.REMOVE_ITEM, dataProvider_removeItemHandler);
-			this.dataProvider.removeEventListener(FlatCollectionEvent.REPLACE_ITEM, dataProvider_replaceItemHandler);
-			this.dataProvider.removeEventListener(FlatCollectionEvent.SORT_CHANGE, dataProvider_sortChangeHandler);
-			this.dataProvider.removeEventListener(FlatCollectionEvent.FILTER_CHANGE, dataProvider_filterChangeHandler);
+		if (this._dataProvider != null) {
+			this._dataProvider.removeEventListener(Event.CHANGE, tabBar_dataProvider_changeHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.ADD_ITEM, tabBar_dataProvider_addItemHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.REMOVE_ITEM, tabBar_dataProvider_removeItemHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.REPLACE_ITEM, tabBar_dataProvider_replaceItemHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.REMOVE_ALL, tabBar_dataProvider_removeAllHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.RESET, tabBar_dataProvider_resetHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.SORT_CHANGE, tabBar_dataProvider_sortChangeHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.FILTER_CHANGE, tabBar_dataProvider_filterChangeHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.UPDATE_ITEM, tabBar_dataProvider_updateItemHandler);
+			this._dataProvider.removeEventListener(FlatCollectionEvent.UPDATE_ALL, tabBar_dataProvider_updateAllHandler);
 		}
-		this.dataProvider = value;
-		if (this.dataProvider != null) {
-			this.dataProvider.addEventListener(Event.CHANGE, dataProvider_changeHandler);
-			this.dataProvider.addEventListener(FlatCollectionEvent.ADD_ITEM, dataProvider_addItemHandler);
-			this.dataProvider.addEventListener(FlatCollectionEvent.REMOVE_ITEM, dataProvider_removeItemHandler);
-			this.dataProvider.addEventListener(FlatCollectionEvent.REPLACE_ITEM, dataProvider_replaceItemHandler);
-			this.dataProvider.addEventListener(FlatCollectionEvent.SORT_CHANGE, dataProvider_sortChangeHandler);
-			this.dataProvider.addEventListener(FlatCollectionEvent.FILTER_CHANGE, dataProvider_filterChangeHandler);
+		this._dataProvider = value;
+		if (this._dataProvider != null) {
+			this._dataProvider.addEventListener(Event.CHANGE, tabBar_dataProvider_changeHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.ADD_ITEM, tabBar_dataProvider_addItemHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.REMOVE_ITEM, tabBar_dataProvider_removeItemHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.REPLACE_ITEM, tabBar_dataProvider_replaceItemHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.REMOVE_ALL, tabBar_dataProvider_removeAllHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.RESET, tabBar_dataProvider_resetHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.SORT_CHANGE, tabBar_dataProvider_sortChangeHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.FILTER_CHANGE, tabBar_dataProvider_filterChangeHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.UPDATE_ITEM, tabBar_dataProvider_updateItemHandler);
+			this._dataProvider.addEventListener(FlatCollectionEvent.UPDATE_ALL, tabBar_dataProvider_updateAllHandler);
 		}
-		if (this.selectedIndex == -1 && this.dataProvider != null && this.dataProvider.length > 0) {
+		if (this._selectedIndex == -1 && this._dataProvider != null && this._dataProvider.length > 0) {
+			// use the setter
 			this.selectedIndex = 0;
-		} else if (this.selectedIndex != -1 && (this.dataProvider == null || this.dataProvider.length == 0)) {
+		} else if (this._selectedIndex != -1 && (this._dataProvider == null || this._dataProvider.length == 0)) {
+			// use the setter
 			this.selectedIndex = -1;
 		}
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.dataProvider;
+		this.setInvalid(DATA);
+		return this._dataProvider;
 	}
+
+	private var _selectedIndex:Int = -1;
 
 	/**
 		@see `feathers.core.IIndexSelector.selectedIndex`
 	**/
-	@:isVar
-	public var selectedIndex(get, set):Int = -1;
+	@:flash.property
+	public var selectedIndex(get, set):Int;
 
 	private function get_selectedIndex():Int {
-		return this.selectedIndex;
+		return this._selectedIndex;
 	}
 
 	private function set_selectedIndex(value:Int):Int {
-		if (this.dataProvider == null) {
+		if (this._dataProvider == null) {
 			value = -1;
 		}
-		if (this.selectedIndex == value) {
-			return this.selectedIndex;
+		if (this._selectedIndex == value) {
+			return this._selectedIndex;
 		}
-		this.selectedIndex = value;
-		// using @:bypassAccessor because if we were to call the selectedItem
-		// setter, this change wouldn't be saved properly
-		if (this.selectedIndex == -1) {
-			@:bypassAccessor this.selectedItem = null;
+		this._selectedIndex = value;
+		// using variable because if we were to call the selectedItem setter,
+		// then this change wouldn't be saved properly
+		if (this._selectedIndex == -1) {
+			this._selectedItem = null;
 		} else {
-			@:bypassAccessor this.selectedItem = this.dataProvider.get(this.selectedIndex);
+			this._selectedItem = this._dataProvider.get(this._selectedIndex);
 		}
-		this.setInvalid(InvalidationFlag.SELECTION);
+		this.setInvalid(SELECTION);
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.selectedIndex;
+		return this._selectedIndex;
 	}
 
 	/**
 		@see `feathers.core.IIndexSelector.maxSelectedIndex`
 	**/
+	@:flash.property
 	public var maxSelectedIndex(get, never):Int;
 
 	private function get_maxSelectedIndex():Int {
-		if (this.dataProvider == null) {
+		if (this._dataProvider == null) {
 			return -1;
 		}
-		return this.dataProvider.length - 1;
+		return this._dataProvider.length - 1;
 	}
+
+	private var _selectedItem:Dynamic = null;
 
 	/**
 		@see `feathers.core.IDataSelector.selectedItem`
 	**/
-	@:isVar
-	public var selectedItem(get, set):Dynamic = null;
+	@:flash.property
+	public var selectedItem(get, set):Dynamic;
 
 	private function get_selectedItem():Dynamic {
-		return this.selectedItem;
+		return this._selectedItem;
 	}
 
 	private function set_selectedItem(value:Dynamic):Dynamic {
-		if (this.dataProvider == null) {
+		if (this._dataProvider == null) {
+			// use the setter
 			this.selectedIndex = -1;
-			return this.selectedItem;
+			return this._selectedItem;
 		}
-		this.selectedIndex = this.dataProvider.indexOf(value);
-		return this.selectedItem;
+		// use the setter
+		this.selectedIndex = this._dataProvider.indexOf(value);
+		return this._selectedItem;
 	}
+
+	private var _previousCustomTabVariant:String = null;
+
+	/**
+		A custom variant to set on all item renderers.
+
+		@see `TabBar.CHILD_VARIANT_TAB`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var customTabVariant:String = null;
 
 	/**
 		Manages tabs used by the tab bar.
@@ -232,7 +281,8 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 	private var inactiveTabs:Array<ToggleButton> = [];
 	private var activeTabs:Array<ToggleButton> = [];
 	private var dataToTab = new ObjectMap<Dynamic, ToggleButton>();
-	private var tabToData = new ObjectMap<ToggleButton, Dynamic>();
+	private var tabToItemState = new ObjectMap<ToggleButton, TabBarItemState>();
+	private var itemStatePool = new ObjectPool(() -> new TabBarItemState());
 	private var _unrenderedData:Array<Dynamic> = [];
 
 	private var _ignoreSelectionChange = false;
@@ -329,18 +379,19 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 	private var _layoutResult = new LayoutBoundsResult();
 	private var _ignoreChildChanges = false;
 
-	private var _currentItemState = new TabBarItemState();
-
 	private function initializeTabBarTheme():Void {
 		SteelTabBarStyles.initialize();
 	}
 
 	override private function update():Void {
-		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var layoutInvalid = this.isInvalid(InvalidationFlag.LAYOUT);
-		var selectionInvalid = this.isInvalid(InvalidationFlag.SELECTION);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var dataInvalid = this.isInvalid(DATA);
+		var layoutInvalid = this.isInvalid(LAYOUT);
+		var selectionInvalid = this.isInvalid(SELECTION);
+		var stateInvalid = this.isInvalid(STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
+		if (this._previousCustomTabVariant != this.customTabVariant) {
+			this.setInvalidationFlag(INVALIDATION_FLAG_TAB_FACTORY);
+		}
 		var tabsInvalid = this.isInvalid(INVALIDATION_FLAG_TAB_FACTORY);
 
 		if (stylesInvalid || stateInvalid) {
@@ -359,6 +410,8 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 
 		// final invalidation to avoid juggler next frame issues
 		this.validateChildren();
+
+		this._previousCustomTabVariant = this.customTabVariant;
 	}
 
 	private function refreshViewPortBounds():Void {
@@ -394,10 +447,6 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 
 		var tabsInvalid = this.isInvalid(INVALIDATION_FLAG_TAB_FACTORY);
 		this.refreshInactiveTabs(tabsInvalid);
-		if (this.dataProvider == null) {
-			return;
-		}
-
 		this.findUnrenderedData();
 		this.recoverInactiveTabs();
 		this.renderUnrenderedData();
@@ -425,29 +474,29 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 			if (tab == null) {
 				continue;
 			}
-			var item = this.tabToData.get(tab);
-			if (item == null) {
+			var state = this.tabToItemState.get(tab);
+			if (state == null) {
 				return;
 			}
-			this.tabToData.remove(tab);
+			var item = state.data;
+			this.tabToItemState.remove(tab);
 			this.dataToTab.remove(item);
-			tab.removeEventListener(TriggerEvent.TRIGGER, tab_triggerHandler);
-			tab.removeEventListener(Event.CHANGE, tab_changeHandler);
-			this._currentItemState.data = item;
-			this._currentItemState.index = -1;
-			this._currentItemState.selected = false;
-			this._currentItemState.text = null;
+			tab.removeEventListener(TriggerEvent.TRIGGER, tabBar_tab_triggerHandler);
+			tab.removeEventListener(Event.CHANGE, tabBar_tab_changeHandler);
+			state.owner = this;
+			state.data = item;
+			state.index = -1;
+			state.selected = false;
+			state.enabled = true;
+			state.text = null;
 			var oldIgnoreSelectionChange = this._ignoreSelectionChange;
 			this._ignoreSelectionChange = true;
-			if (this.tabRecycler.reset != null) {
-				this.tabRecycler.reset(tab, this._currentItemState);
+			if (this.tabRecycler != null && this.tabRecycler.reset != null) {
+				this.tabRecycler.reset(tab, state);
 			}
-			if (Std.is(tab, IDataRenderer)) {
-				var dataRenderer = cast(tab, IDataRenderer);
-				dataRenderer.data = null;
-			}
-			tab.selected = this._currentItemState.selected;
 			this._ignoreSelectionChange = oldIgnoreSelectionChange;
+			this.refreshTabProperties(tab, state);
+			this.itemStatePool.release(state);
 		}
 	}
 
@@ -480,14 +529,14 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 		} else {
 			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
 		}
-		if (Std.is(this, IStateContext) && Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = cast(this, IStateContext<Dynamic>);
+		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
+			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
 		}
 		this.addChildAt(this._currentBackgroundSkin, 0);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		if (!this.enabled && this.disabledBackgroundSkin != null) {
+		if (!this._enabled && this.disabledBackgroundSkin != null) {
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
@@ -497,13 +546,13 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 		if (skin == null) {
 			return;
 		}
-		if (Std.is(skin, IStateObserver)) {
-			cast(skin, IStateObserver).stateContext = null;
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = null;
 		}
+		// we need to restore these values so that they won't be lost the
+		// next time that this skin is used for measurement
 		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
-			// we need to restore these values so that they won't be lost the
-			// next time that this skin is used for measurement
 			this.removeChild(skin);
 		}
 	}
@@ -530,27 +579,17 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 	}
 
 	private function findUnrenderedData():Void {
+		if (this._dataProvider == null || this._dataProvider.length == 0) {
+			return;
+		}
 		var depthOffset = this._currentBackgroundSkin != null ? 1 : 0;
-		for (i in 0...this.dataProvider.length) {
-			var item = this.dataProvider.get(i);
+		for (i in 0...this._dataProvider.length) {
+			var item = this._dataProvider.get(i);
 			var tab = this.dataToTab.get(item);
 			if (tab != null) {
-				this._currentItemState.data = item;
-				this._currentItemState.index = i;
-				this._currentItemState.selected = item == this.selectedItem;
-				this._currentItemState.text = itemToText(item);
-				var oldIgnoreSelectionChange = this._ignoreSelectionChange;
-				this._ignoreSelectionChange = true;
-				if (this.tabRecycler.update != null) {
-					this.tabRecycler.update(tab, this._currentItemState);
-				}
-				if (Std.is(tab, IDataRenderer)) {
-					var dataRenderer = cast(tab, IDataRenderer);
-					// if the tab is an IDataRenderer, this cannot be overridden
-					dataRenderer.data = this._currentItemState.data;
-				}
-				tab.selected = this._currentItemState.selected;
-				this._ignoreSelectionChange = oldIgnoreSelectionChange;
+				var state = this.tabToItemState.get(tab);
+				this.populateCurrentItemState(item, i, state);
+				this.updateTab(tab, state);
 				this.addChildAt(tab, i + depthOffset);
 				var removed = this.inactiveTabs.remove(tab);
 				if (!removed) {
@@ -567,40 +606,33 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 	private function renderUnrenderedData():Void {
 		var depthOffset = this._currentBackgroundSkin != null ? 1 : 0;
 		for (item in this._unrenderedData) {
-			var index = this.dataProvider.indexOf(item);
-			var tab = this.createTab(item, index);
+			var index = this._dataProvider.indexOf(item);
+			var state = this.itemStatePool.get();
+			this.populateCurrentItemState(item, index, state);
+			var tab = this.createTab(state);
 			this.activeTabs.push(tab);
 			this.addChildAt(tab, index + depthOffset);
 		}
 		this._unrenderedData.resize(0);
 	}
 
-	private function createTab(item:Dynamic, index:Int):ToggleButton {
+	private function createTab(state:TabBarItemState):ToggleButton {
 		var tab:ToggleButton = null;
 		if (this.inactiveTabs.length == 0) {
 			tab = this.tabRecycler.create();
+			if (tab.variant == null) {
+				// if the factory set a variant already, don't use the default
+				var variant = this.customTabVariant != null ? this.customTabVariant : TabBar.CHILD_VARIANT_TAB;
+				tab.variant = variant;
+			}
 		} else {
 			tab = this.inactiveTabs.shift();
 		}
-		if (tab.variant == null) {
-			// if the factory set a variant already, don't use the default
-			tab.variant = TabBar.CHILD_VARIANT_TAB;
-		}
-		this._currentItemState.data = item;
-		this._currentItemState.index = index;
-		this._currentItemState.selected = item == this.selectedItem;
-		this._currentItemState.text = itemToText(item);
-		var oldIgnoreSelectionChange = this._ignoreSelectionChange;
-		this._ignoreSelectionChange = true;
-		if (this.tabRecycler.update != null) {
-			this.tabRecycler.update(tab, this._currentItemState);
-		}
-		tab.selected = this._currentItemState.selected;
-		this._ignoreSelectionChange = oldIgnoreSelectionChange;
-		tab.addEventListener(TriggerEvent.TRIGGER, tab_triggerHandler);
-		tab.addEventListener(Event.CHANGE, tab_changeHandler);
-		this.tabToData.set(tab, item);
-		this.dataToTab.set(item, tab);
+		this.updateTab(tab, state);
+		tab.addEventListener(TriggerEvent.TRIGGER, tabBar_tab_triggerHandler);
+		tab.addEventListener(Event.CHANGE, tabBar_tab_changeHandler);
+		this.tabToItemState.set(tab, state);
+		this.dataToTab.set(state.data, tab);
 		return tab;
 	}
 
@@ -611,20 +643,56 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 		}
 	}
 
+	private function populateCurrentItemState(item:Dynamic, index:Int, state:TabBarItemState):Void {
+		state.owner = this;
+		state.data = item;
+		state.index = index;
+		state.selected = item == this._selectedItem;
+		state.enabled = this._enabled;
+		state.text = itemToText(item);
+	}
+
+	private function updateTab(tab:ToggleButton, state:TabBarItemState):Void {
+		var oldIgnoreSelectionChange = this._ignoreSelectionChange;
+		this._ignoreSelectionChange = true;
+		if (this.tabRecycler.update != null) {
+			this.tabRecycler.update(tab, state);
+		}
+		this._ignoreSelectionChange = oldIgnoreSelectionChange;
+		this.refreshTabProperties(tab, state);
+	}
+
+	private function refreshTabProperties(tab:ToggleButton, state:TabBarItemState):Void {
+		var oldIgnoreSelectionChange = this._ignoreSelectionChange;
+		this._ignoreSelectionChange = true;
+		if (Std.is(tab, IUIControl)) {
+			var uiControl = cast(tab, IToggle);
+			uiControl.enabled = state.enabled;
+		}
+		if (Std.is(tab, IDataRenderer)) {
+			var dataRenderer = cast(tab, IDataRenderer);
+			// if the tab is an IDataRenderer, this cannot be overridden
+			dataRenderer.data = state.data;
+		}
+		tab.selected = state.selected;
+		tab.enabled = state.enabled;
+		this._ignoreSelectionChange = oldIgnoreSelectionChange;
+	}
+
 	private function refreshSelectedIndicesAfterFilterOrSort():Void {
-		if (this.selectedIndex == -1) {
+		if (this._selectedIndex == -1) {
 			return;
 		}
 		// the index may have changed, possibily even to -1, if the item was
 		// filtered out
-		this.selectedIndex = this.dataProvider.indexOf(this.selectedItem);
+		this.selectedIndex = this._dataProvider.indexOf(this._selectedItem); // use the setter
 	}
 
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
-		if (this.dataProvider == null || this.dataProvider.length == 0) {
+		if (this._dataProvider == null || this._dataProvider.length == 0) {
 			return;
 		}
-		var result = this.selectedIndex;
+		var result = this._selectedIndex;
 		switch (event.keyCode) {
 			case Keyboard.UP:
 				result = result - 1;
@@ -641,35 +709,35 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 			case Keyboard.HOME:
 				result = 0;
 			case Keyboard.END:
-				result = this.dataProvider.length - 1;
+				result = this._dataProvider.length - 1;
 			default:
 				// not keyboard navigation
 				return;
 		}
 		if (result < 0) {
 			result = 0;
-		} else if (result >= this.dataProvider.length) {
-			result = this.dataProvider.length - 1;
+		} else if (result >= this._dataProvider.length) {
+			result = this._dataProvider.length - 1;
 		}
 		event.stopPropagation();
+		// use the setter
 		this.selectedIndex = result;
 	}
 
 	private function tabBar_keyDownHandler(event:KeyboardEvent):Void {
-		if (!this.enabled) {
+		if (!this._enabled) {
 			return;
 		}
 		this.navigateWithKeyboard(event);
 	}
 
-	private function tab_triggerHandler(event:TriggerEvent):Void {
+	private function tabBar_tab_triggerHandler(event:TriggerEvent):Void {
 		var tab = cast(event.currentTarget, ToggleButton);
-		var item = this.tabToData.get(tab);
-		// trigger before change
-		this.dispatchEvent(event);
+		var state = this.tabToItemState.get(tab);
+		TabBarEvent.dispatch(this, TabBarEvent.ITEM_TRIGGER, state);
 	}
 
-	private function tab_changeHandler(event:Event):Void {
+	private function tabBar_tab_changeHandler(event:Event):Void {
 		if (this._ignoreSelectionChange) {
 			return;
 		}
@@ -679,46 +747,79 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 			tab.selected = true;
 			return;
 		}
-		var item = this.tabToData.get(tab);
-		this.selectedItem = item;
+		var state = this.tabToItemState.get(tab);
+		// use the setter
+		this.selectedItem = state.data;
 	}
 
-	private function dataProvider_changeHandler(event:Event):Void {
-		this.setInvalid(InvalidationFlag.DATA);
+	private function tabBar_dataProvider_changeHandler(event:Event):Void {
+		this.setInvalid(DATA);
 	}
 
-	private function dataProvider_addItemHandler(event:FlatCollectionEvent):Void {
-		if (this.selectedIndex == -1) {
+	private function tabBar_dataProvider_addItemHandler(event:FlatCollectionEvent):Void {
+		if (this._selectedIndex == -1) {
 			return;
 		}
-		if (this.selectedIndex <= event.index) {
+		if (this._selectedIndex <= event.index) {
 			FeathersEvent.dispatch(this, Event.CHANGE);
 		}
 	}
 
-	private function dataProvider_removeItemHandler(event:FlatCollectionEvent):Void {
-		if (this.selectedIndex == -1) {
+	private function tabBar_dataProvider_removeItemHandler(event:FlatCollectionEvent):Void {
+		if (this._selectedIndex == -1) {
 			return;
 		}
-		if (this.selectedIndex == event.index) {
+		if (this._selectedIndex == event.index) {
 			FeathersEvent.dispatch(this, Event.CHANGE);
 		}
 	}
 
-	private function dataProvider_replaceItemHandler(event:FlatCollectionEvent):Void {
-		if (this.selectedIndex == -1) {
+	private function tabBar_dataProvider_replaceItemHandler(event:FlatCollectionEvent):Void {
+		if (this._selectedIndex == -1) {
 			return;
 		}
-		if (this.selectedIndex == event.index) {
+		if (this._selectedIndex == event.index) {
 			FeathersEvent.dispatch(this, Event.CHANGE);
 		}
 	}
 
-	private function dataProvider_sortChangeHandler(event:FlatCollectionEvent):Void {
+	private function tabBar_dataProvider_removeAllHandler(event:FlatCollectionEvent):Void {
+		// use the setter
+		this.selectedIndex = -1;
+	}
+
+	private function tabBar_dataProvider_resetHandler(event:FlatCollectionEvent):Void {
+		// use the setter
+		this.selectedIndex = -1;
+	}
+
+	private function tabBar_dataProvider_sortChangeHandler(event:FlatCollectionEvent):Void {
 		this.refreshSelectedIndicesAfterFilterOrSort();
 	}
 
-	private function dataProvider_filterChangeHandler(event:FlatCollectionEvent):Void {
+	private function tabBar_dataProvider_filterChangeHandler(event:FlatCollectionEvent):Void {
 		this.refreshSelectedIndicesAfterFilterOrSort();
+	}
+
+	private function updateTabForIndex(index:Int):Void {
+		var item = this._dataProvider.get(index);
+		var tab = this.dataToTab.get(item);
+		if (tab == null) {
+			// doesn't exist yet, so we need to do a full invalidation
+			this.setInvalid(DATA);
+			return;
+		}
+		var state = this.tabToItemState.get(tab);
+		this.updateTab(tab, state);
+	}
+
+	private function tabBar_dataProvider_updateItemHandler(event:FlatCollectionEvent):Void {
+		this.updateTabForIndex(event.index);
+	}
+
+	private function tabBar_dataProvider_updateAllHandler(event:FlatCollectionEvent):Void {
+		for (i in 0...this._dataProvider.length) {
+			this.updateTabForIndex(i);
+		}
 	}
 }

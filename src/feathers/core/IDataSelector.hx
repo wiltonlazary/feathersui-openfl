@@ -56,5 +56,6 @@ interface IDataSelector<T> {
 
 		@since 1.0.0
 	**/
-	public var selectedItem(get, set):T;
+	@:flash.property
+	public var selectedItem(get, set):#if flash Dynamic #else T #end;
 }

@@ -8,7 +8,6 @@
 
 package feathers.events;
 
-import openfl._internal.utils.ObjectPool;
 import openfl.display.InteractiveObject;
 import openfl.errors.ArgumentError;
 import openfl.events.Event;
@@ -16,6 +15,13 @@ import openfl.events.EventType;
 import openfl.events.IEventDispatcher;
 import openfl.events.MouseEvent;
 import openfl.events.TouchEvent;
+#if !flash
+#if (openfl >= "9.1.0")
+import openfl.utils.ObjectPool;
+#else
+import openfl._internal.utils.ObjectPool;
+#end
+#end
 
 /**
 	Dispatched with a short delay after `MouseEvent.MOUSE_DOWN` or
@@ -35,9 +41,12 @@ class LongPressEvent extends Event {
 
 	#if !flash
 	private static var _pool = new ObjectPool<LongPressEvent>(() -> return new LongPressEvent(null), (event) -> {
+		event.target = null;
+		event.currentTarget = null;
 		event.__preventDefault = false;
 		event.__isCanceled = false;
 		event.__isCanceledNow = false;
+		event.relatedObject = null;
 	});
 	#end
 

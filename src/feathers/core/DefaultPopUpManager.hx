@@ -22,6 +22,7 @@ import openfl.display.DisplayObject;
 
 	@since 1.0.0
 **/
+@:access(feathers.core.FocusManager)
 class DefaultPopUpManager implements IPopUpManager {
 	private static function defaultOverlayFactory():DisplayObject {
 		var overlay = new Sprite();
@@ -42,19 +43,21 @@ class DefaultPopUpManager implements IPopUpManager {
 
 	private var _ignoreRemoval = false;
 
+	private var _root:DisplayObjectContainer;
+
 	/**
 		@see `feathers.core.IPopUpManager.root`
 	**/
-	@:isVar
+	@:flash.property
 	public var root(get, set):DisplayObjectContainer;
 
 	private function get_root():DisplayObjectContainer {
-		return this.root;
+		return this._root;
 	}
 
 	private function set_root(value:DisplayObjectContainer):DisplayObjectContainer {
-		if (this.root == value) {
-			return this.root;
+		if (this._root == value) {
+			return this._root;
 		}
 		if (value.stage == null) {
 			throw new ArgumentError("DefaultPopUpManager root's stage property must not be null.");
@@ -62,22 +65,22 @@ class DefaultPopUpManager implements IPopUpManager {
 		var oldIgnoreRemoval = this._ignoreRemoval;
 		this._ignoreRemoval = true;
 		for (popUp in this.popUps) {
-			this.root.removeChild(popUp);
+			this._root.removeChild(popUp);
 			var overlay = this._popUpToOverlay.get(popUp);
 			if (overlay != null) {
-				this.root.removeChild(overlay);
+				this._root.removeChild(overlay);
 			}
 		}
 		this._ignoreRemoval = oldIgnoreRemoval;
-		this.root = value;
+		this._root = value;
 		for (popUp in this.popUps) {
 			var overlay = this._popUpToOverlay.get(popUp);
 			if (overlay != null) {
-				this.root.addChild(overlay);
+				this._root.addChild(overlay);
 			}
-			this.root.addChild(popUp);
+			this._root.addChild(popUp);
 		}
-		return this.root;
+		return this._root;
 	}
 
 	private var popUps:Array<DisplayObject> = [];
@@ -86,27 +89,52 @@ class DefaultPopUpManager implements IPopUpManager {
 
 	private var _popUpToOverlay:Map<DisplayObject, DisplayObject> = [];
 
+	private var _popUpToFocusManager:Map<DisplayObject, IFocusManager> = [];
+
+	private var _overlayFactory:() -> DisplayObject;
+
 	/**
 		@see `feathers.core.IPopUpManager.overlayFactory`
 	**/
-	@:isVar
+	@:flash.property
 	public var overlayFactory(get, set):() -> DisplayObject;
 
 	private function get_overlayFactory():() -> DisplayObject {
-		return this.overlayFactory;
+		return this._overlayFactory;
 	}
 
 	private function set_overlayFactory(value:() -> DisplayObject):() -> DisplayObject {
-		if (Reflect.compareMethods(this.overlayFactory, value)) {
-			return this.overlayFactory;
+		if (Reflect.compareMethods(this._overlayFactory, value)) {
+			return this._overlayFactory;
 		}
-		this.overlayFactory = value;
-		return this.overlayFactory;
+		this._overlayFactory = value;
+		return this._overlayFactory;
+	}
+
+	private var _focusManager:IFocusManager;
+
+	/**
+		@see `feathers.core.IPopUpManager.focusManager`
+	**/
+	@:flash.property
+	public var focusManager(get, set):IFocusManager;
+
+	private function get_focusManager():IFocusManager {
+		return this._focusManager;
+	}
+
+	private function set_focusManager(value:IFocusManager):IFocusManager {
+		if (this._focusManager == value) {
+			return this._focusManager;
+		}
+		this._focusManager = value;
+		return this._focusManager;
 	}
 
 	/**
 		@see `feathers.core.IPopUpManager.popUpCount`
 	**/
+	@:flash.property
 	public var popUpCount(get, never):Int;
 
 	private function get_popUpCount():Int {
@@ -158,27 +186,31 @@ class DefaultPopUpManager implements IPopUpManager {
 	public function addPopUp(popUp:DisplayObject, isModal:Bool = true, isCentered:Bool = true, ?customOverlayFactory:() -> DisplayObject):DisplayObject {
 		if (isModal) {
 			if (customOverlayFactory == null) {
-				customOverlayFactory = this.overlayFactory;
+				customOverlayFactory = this._overlayFactory;
 			}
 			if (customOverlayFactory == null) {
 				customOverlayFactory = DefaultPopUpManager.defaultOverlayFactory;
 			}
 			var overlay = customOverlayFactory();
-			overlay.width = this.root.stage.stageWidth;
-			overlay.height = this.root.stage.stageHeight;
-			this.root.addChild(overlay);
+			overlay.width = this._root.stage.stageWidth;
+			overlay.height = this._root.stage.stageHeight;
+			this._root.addChild(overlay);
 			this._popUpToOverlay.set(popUp, overlay);
 		}
 
 		this.popUps.push(popUp);
-		var result = this.root.addChild(popUp);
+		var result = this._root.addChild(popUp);
 
 		// this listener needs to be added after the pop-up is added to the
 		// root because the pop-up may not have been removed from its old
 		// parent yet, which will trigger the listener if it is added first.
 		popUp.addEventListener(Event.REMOVED_FROM_STAGE, popUp_removedFromStageHandler);
 		if (this.popUps.length == 1) {
-			this.root.stage.addEventListener(Event.RESIZE, stage_resizeHandler, false, 0, true);
+			this._root.stage.addEventListener(Event.RESIZE, stage_resizeHandler, false, 0, true);
+		}
+		if (isModal && this._focusManager != null) {
+			var focusManager = FocusManager.push(this._focusManager, popUp);
+			this._popUpToFocusManager.set(popUp, focusManager);
 		}
 		if (isCentered) {
 			if (Std.is(popUp, IMeasureObject)) {
@@ -199,7 +231,7 @@ class DefaultPopUpManager implements IPopUpManager {
 		if (index == -1) {
 			return popUp;
 		}
-		return this.root.removeChild(popUp);
+		return this._root.removeChild(popUp);
 	}
 
 	/**
@@ -224,14 +256,14 @@ class DefaultPopUpManager implements IPopUpManager {
 		@see `feathers.core.IPopUpManager.centerPopUp`
 	**/
 	public function centerPopUp(popUp:DisplayObject):Void {
-		var stage = this.root.stage;
+		var stage = this._root.stage;
 		if (Std.is(popUp, IValidating)) {
 			cast(popUp, IValidating).validateNow();
 		}
 		var topLeft = new Point(0, 0);
-		topLeft = this.root.globalToLocal(topLeft);
+		topLeft = this._root.globalToLocal(topLeft);
 		var bottomRight = new Point(stage.stageWidth, stage.stageHeight);
-		bottomRight = this.root.globalToLocal(bottomRight);
+		bottomRight = this._root.globalToLocal(bottomRight);
 		popUp.x = topLeft.x + (bottomRight.x - topLeft.x - popUp.width) / 2.0;
 		popUp.y = topLeft.y + (bottomRight.y - topLeft.y - popUp.height) / 2.0;
 	}
@@ -245,12 +277,17 @@ class DefaultPopUpManager implements IPopUpManager {
 		this.popUps.remove(popUp);
 		var overlay = this._popUpToOverlay.get(popUp);
 		if (overlay != null) {
-			this.root.removeChild(overlay);
+			this._root.removeChild(overlay);
 			this._popUpToOverlay.remove(popUp);
+		}
+		var focusManager = this._popUpToFocusManager.get(popUp);
+		if (focusManager != null) {
+			this._popUpToFocusManager.remove(popUp);
+			FocusManager.remove(this._focusManager, focusManager);
 		}
 
 		if (this.popUps.length == 0) {
-			this.root.stage.removeEventListener(Event.RESIZE, stage_resizeHandler);
+			this._root.stage.removeEventListener(Event.RESIZE, stage_resizeHandler);
 		}
 	}
 
@@ -260,7 +297,7 @@ class DefaultPopUpManager implements IPopUpManager {
 	}
 
 	private function stage_resizeHandler(event:Event):Void {
-		var stage = this.root.stage;
+		var stage = this._root.stage;
 		var stageWidth = stage.stageWidth;
 		var stageHeight = stage.stageHeight;
 		for (popUp in popUps) {

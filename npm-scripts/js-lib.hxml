@@ -1,5 +1,5 @@
 -js ../lib/_gen/_.js
---macro ImportAll.run("feathers")
+--macro include("feathers")
 -cp ../src
 -D lime=7.6.2
 -cp ../node_modules/lime/src
@@ -18,4 +18,5 @@
 -D tools
 -D commonjs
 -D howlerjs
+--macro JSPropertiesMacro.defineProperties()
 --no-inline

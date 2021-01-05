@@ -8,6 +8,7 @@
 
 package feathers.data;
 
+import feathers.controls.GridView;
 import feathers.controls.GridViewColumn;
 
 /**
@@ -35,32 +36,39 @@ class GridViewCellState {
 	}
 
 	/**
+		Returns a reference to the `GridView` that contains this cell.
+
+		@since 1.0.0
+	**/
+	public var owner:GridView;
+
+	/**
 		An row from the collection displayed by the `GridView`.
 
 		@since 1.0.0
 	**/
-	public var data(default, null):Dynamic;
+	public var data:Dynamic;
 
 	/**
 		The vertical position of the cell within the `GridView`.
 
 		@since 1.0.0
 	**/
-	public var rowIndex(default, null):Int;
+	public var rowIndex:Int;
 
 	/**
 		The horizontal position of the cell within the `GridView`.
 
 		@since 1.0.0
 	**/
-	public var columnIndex(default, null):Int;
+	public var columnIndex:Int;
 
 	/**
 		The column of the cell.
 
 		@since 1.0.0
 	**/
-	public var column(default, null):GridViewColumn;
+	public var column:GridViewColumn;
 
 	/**
 		Returns whether the cell is selected or not.
@@ -70,7 +78,7 @@ class GridViewCellState {
 
 		@since 1.0.0
 	**/
-	public var selected(default, null):Bool;
+	public var selected:Bool;
 
 	/**
 		Returns the text to display for the cell, as returned by the function
@@ -80,5 +88,14 @@ class GridViewCellState {
 
 		@since 1.0.0
 	**/
-	public var text(default, null):String;
+	public var text:String;
+
+	/**
+		Returns whether the item is enabled or not.
+
+		@see `feathers.core.IUIControl.enabled`
+
+		@since 1.0.0
+	**/
+	public var enabled:Bool;
 }

@@ -8,6 +8,8 @@
 
 package feathers.data;
 
+import feathers.controls.ListView;
+
 /**
 	Represents the current state of a `ListView` item renderer.
 
@@ -30,11 +32,18 @@ class ListViewItemState {
 	}
 
 	/**
+		Returns a reference to the `ListView` that contains this item.
+
+		@since 1.0.0
+	**/
+	public var owner:ListView;
+
+	/**
 		An item from the collection used as the `ListView` data provider.
 
 		@since 1.0.0
 	**/
-	public var data(default, null):Dynamic;
+	public var data:Dynamic;
 
 	/**
 		The position of the data within the collection used as the `ListView`
@@ -42,7 +51,7 @@ class ListViewItemState {
 
 		@since 1.0.0
 	**/
-	public var index(default, null):Int;
+	public var index:Int;
 
 	/**
 		Returns whether the item is selected or not.
@@ -52,7 +61,7 @@ class ListViewItemState {
 
 		@since 1.0.0
 	**/
-	public var selected(default, null):Bool;
+	public var selected:Bool;
 
 	/**
 		Returns the text to display for the item, as returned by the function
@@ -62,5 +71,23 @@ class ListViewItemState {
 
 		@since 1.0.0
 	**/
-	public var text(default, null):String;
+	public var text:String;
+
+	/**
+		Returns whether the item is enabled or not.
+
+		@see `feathers.core.IUIControl.enabled`
+
+		@since 1.0.0
+	**/
+	public var enabled:Bool;
+
+	/**
+		Returns the item's recycler ID.
+
+		@see `feathers.controls.ListView.recyclerIDFunction`
+
+		@since 1.0.0
+	**/
+	public var recyclerID:String;
 }

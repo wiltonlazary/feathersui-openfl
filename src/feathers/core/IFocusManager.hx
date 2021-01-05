@@ -8,6 +8,7 @@
 
 package feathers.core;
 
+import openfl.display.DisplayObject;
 import openfl.display.DisplayObjectContainer;
 
 /**
@@ -18,6 +19,13 @@ import openfl.display.DisplayObjectContainer;
 	@since 1.0.0
 **/
 interface IFocusManager {
+	/**
+		The root of the focus manager.
+
+		@since 1.0.0
+	**/
+	public var root(get, never):DisplayObject;
+
 	/**
 		The object that currently has focus.
 
@@ -41,4 +49,11 @@ interface IFocusManager {
 	**/
 	@:flash.property
 	public var enabled(get, set):Bool;
+
+	/**
+		Finds the next focus in the specified direction (forward or backward).
+
+		@since 1.0.0
+	**/
+	public function findNextFocus(backward:Bool = false):IFocusObject;
 }

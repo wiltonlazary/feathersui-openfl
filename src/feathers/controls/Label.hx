@@ -8,22 +8,22 @@
 
 package feathers.controls;
 
-import feathers.utils.MeasurementsUtil;
-import feathers.themes.steel.components.SteelLabelStyles;
 import feathers.core.FeathersControl;
+import feathers.core.IHTMLTextControl;
 import feathers.core.IMeasureObject;
-import feathers.core.InvalidationFlag;
-import feathers.core.IStateContext;
-import feathers.core.IStateObserver;
 import feathers.core.ITextControl;
 import feathers.core.IUIControl;
 import feathers.core.IValidating;
 import feathers.layout.Measurements;
 import feathers.layout.VerticalAlign;
+import feathers.skins.IProgrammaticSkin;
+import feathers.text.TextFormat;
+import feathers.themes.steel.components.SteelLabelStyles;
+import feathers.utils.MeasurementsUtil;
 import openfl.display.DisplayObject;
+import openfl.events.Event;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
-import openfl.text.TextFormat;
 
 /**
 	Displays text with an optional background.
@@ -36,12 +36,14 @@ import openfl.text.TextFormat;
 	this.addChild(label);
 	```
 
-	@see [Tutorial: How to use the Label component](https://feathersui.com/learn/haxe-openfl/help/label/)
+	@see [Tutorial: How to use the Label component](https://feathersui.com/learn/haxe-openfl/label/)
 
 	@since 1.0.0
 **/
+@:meta(DefaultProperty("text"))
+@defaultXmlProperty("text")
 @:styleContext
-class Label extends FeathersControl implements ITextControl {
+class Label extends FeathersControl implements ITextControl implements IHTMLTextControl {
 	/**
 		A variant used to style the label using a Larger text format for
 		headings. Variants allow themes to provide an assortment of different
@@ -90,13 +92,14 @@ class Label extends FeathersControl implements ITextControl {
 	}
 
 	private var textField:TextField;
-
 	private var _previousText:String = null;
 	private var _previousHTMLText:String = null;
 	private var _previousTextFormat:TextFormat = null;
+	private var _previousSimpleTextFormat:openfl.text.TextFormat = null;
 	private var _updatedTextStyles = false;
 	private var _textMeasuredWidth:Float;
 	private var _textMeasuredHeight:Float;
+	private var _text:String = "";
 
 	/**
 		The text displayed by the label.
@@ -117,29 +120,31 @@ class Label extends FeathersControl implements ITextControl {
 
 		@since 1.0.0
 	**/
-	@:isVar
-	public var text(get, set):String = "";
+	@:flash.property
+	public var text(get, set):String;
 
 	private function get_text():String {
-		return this.text;
+		return this._text;
 	}
 
 	private function set_text(value:String):String {
 		if (value == null) {
 			// null gets converted to an empty string
-			if (this.text.length == 0) {
+			if (this._text.length == 0) {
 				// already an empty string
-				return this.text;
+				return this._text;
 			}
 			value = "";
 		}
-		if (this.text == value) {
-			return this.text;
+		if (this._text == value) {
+			return this._text;
 		}
-		this.text = value;
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.text;
+		this._text = value;
+		this.setInvalid(DATA);
+		return this._text;
 	}
+
+	private var _htmlText:String = null;
 
 	/**
 		Text displayed by the label that is parsed as a simple form of HTML.
@@ -157,16 +162,20 @@ class Label extends FeathersControl implements ITextControl {
 
 		@since 1.0.0
 	**/
-	@:isVar
-	public var htmlText(default, set):String = null;
+	@:flash.property
+	public var htmlText(get, set):String;
+
+	private function get_htmlText():String {
+		return this._htmlText;
+	}
 
 	private function set_htmlText(value:String):String {
-		if (this.htmlText == value) {
-			return this.htmlText;
+		if (this._htmlText == value) {
+			return this._htmlText;
 		}
-		this.htmlText = value;
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.htmlText;
+		this._htmlText = value;
+		this.setInvalid(DATA);
+		return this._htmlText;
 	}
 
 	/**
@@ -185,7 +194,7 @@ class Label extends FeathersControl implements ITextControl {
 		@since 1.0.0
 	**/
 	@:style
-	public var textFormat:TextFormat = null;
+	public var textFormat:AbstractTextFormat = null;
 
 	/**
 		Determines if an embedded font is used or not.
@@ -203,6 +212,8 @@ class Label extends FeathersControl implements ITextControl {
 	@:style
 	public var embedFonts:Bool = false;
 
+	private var _selectable:Bool = false;
+
 	/**
 		Indicates if the label's text may be selected or not.
 
@@ -214,15 +225,20 @@ class Label extends FeathersControl implements ITextControl {
 
 		@since 1.0.0
 	**/
-	public var selectable(default, set):Bool = false;
+	@:flash.property
+	public var selectable(get, set):Bool;
+
+	private function get_selectable():Bool {
+		return this._selectable;
+	}
 
 	private function set_selectable(value:Bool):Bool {
-		if (this.selectable == value) {
-			return this.selectable;
+		if (this._selectable == value) {
+			return this._selectable;
 		}
-		this.selectable = value;
-		this.setInvalid(InvalidationFlag.SELECTION);
-		return this.selectable;
+		this._selectable = value;
+		this.setInvalid(SELECTION);
+		return this._selectable;
 	}
 
 	/**
@@ -232,10 +248,11 @@ class Label extends FeathersControl implements ITextControl {
 
 		@since 1.0.0
 	**/
-	public var selectionBeginIndex(get, null):Int;
+	@:flash.property
+	public var selectionBeginIndex(get, never):Int;
 
 	private function get_selectionBeginIndex():Int {
-		if (!this.selectable) {
+		if (!this._selectable) {
 			return -1;
 		}
 		if (this.textField == null) {
@@ -251,10 +268,11 @@ class Label extends FeathersControl implements ITextControl {
 
 		@since 1.0.0
 	**/
-	public var selectionEndIndex(get, null):Int;
+	@:flash.property
+	public var selectionEndIndex(get, never):Int;
 
 	private function get_selectionEndIndex():Int {
-		if (!this.selectable) {
+		if (!this._selectable) {
 			return -1;
 		}
 		if (this.textField == null) {
@@ -280,7 +298,7 @@ class Label extends FeathersControl implements ITextControl {
 		@since 1.0.0
 	**/
 	@:style
-	public var disabledTextFormat:TextFormat = null;
+	public var disabledTextFormat:AbstractTextFormat = null;
 
 	/**
 		The minimum space, in pixels, between the button's top edge and the
@@ -371,7 +389,7 @@ class Label extends FeathersControl implements ITextControl {
 		@see `feathers.layout.VerticalAlign.BOTTOM`
 	**/
 	@:style
-	public var verticalAlign:VerticalAlign = MIDDLE;
+	public var verticalAlign:VerticalAlign = TOP;
 
 	/**
 		Determines if the text is displayed on a single line, or if it wraps.
@@ -446,11 +464,11 @@ class Label extends FeathersControl implements ITextControl {
 	}
 
 	override private function update():Void {
-		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var selectionInvalid = this.isInvalid(InvalidationFlag.SELECTION);
-		var sizeInvalid = this.isInvalid(InvalidationFlag.SIZE);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var dataInvalid = this.isInvalid(DATA);
+		var selectionInvalid = this.isInvalid(SELECTION);
+		var sizeInvalid = this.isInvalid(SIZE);
+		var stateInvalid = this.isInvalid(STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
 
 		this._updatedTextStyles = false;
 
@@ -571,33 +589,41 @@ class Label extends FeathersControl implements ITextControl {
 			this._updatedTextStyles = true;
 		}
 		var textFormat = this.getCurrentTextFormat();
-		if (textFormat == this._previousTextFormat) {
+		var simpleTextFormat = textFormat != null ? textFormat.toSimpleTextFormat() : null;
+		if (simpleTextFormat == this._previousSimpleTextFormat) {
 			// nothing to refresh
 			return;
 		}
-		if (textFormat != null) {
-			this.textField.defaultTextFormat = textFormat;
-			this._updatedTextStyles = true;
-			this._previousTextFormat = textFormat;
+		if (this._previousTextFormat != null) {
+			this._previousTextFormat.removeEventListener(Event.CHANGE, label_textFormat_changeHandler);
 		}
+		if (textFormat != null) {
+			textFormat.addEventListener(Event.CHANGE, label_textFormat_changeHandler, false, 0, true);
+			this.textField.defaultTextFormat = simpleTextFormat;
+			this._updatedTextStyles = true;
+		}
+		this._previousTextFormat = textFormat;
+		this._previousSimpleTextFormat = simpleTextFormat;
 	}
 
 	private function refreshText(sizeInvalid:Bool):Void {
-		var hasText = this.text != null && this.text.length > 0;
-		var hasHTMLText = this.htmlText != null && this.htmlText.length > 0;
+		var hasText = this._text != null && this._text.length > 0;
+		var hasHTMLText = this._htmlText != null && this._htmlText.length > 0;
 		this.textField.visible = hasText || hasHTMLText;
-		if (this.text == this._previousText && this.htmlText == this._previousHTMLText && !this._updatedTextStyles && !sizeInvalid) {
+		if (this._text == this._previousText && this._htmlText == this._previousHTMLText && !this._updatedTextStyles && !sizeInvalid) {
 			// nothing to refresh
 			return;
 		}
-		if (hasHTMLText) {
-			this.textField.htmlText = this.htmlText;
-		} else if (hasText) {
-			this.textField.text = this.text;
-		} else {
-			this.textField.text = "\u8203"; // zero-width space
-		}
+		// set autoSize before text because setting text first can trigger an
+		// extra text engine reflow
 		this.textField.autoSize = TextFieldAutoSize.LEFT;
+		if (hasHTMLText) {
+			this.textField.htmlText = this._htmlText;
+		} else if (hasText) {
+			this.textField.text = this._text;
+		} else {
+			this.textField.text = "\u200b"; // zero-width space
+		}
 		var textFieldWidth:Null<Float> = null;
 		if (this.explicitWidth != null) {
 			textFieldWidth = this.explicitWidth;
@@ -620,19 +646,19 @@ class Label extends FeathersControl implements ITextControl {
 		if (!hasText && !hasHTMLText) {
 			this.textField.text = "";
 		}
-		this._previousText = this.text;
-		this._previousHTMLText = this.htmlText;
+		this._previousText = this._text;
+		this._previousHTMLText = this._htmlText;
 	}
 
 	private function refreshSelection():Void {
-		var selectable = this.selectable && this.enabled;
+		var selectable = this._selectable && this._enabled;
 		if (this.textField.selectable != selectable) {
 			this.textField.selectable = selectable;
 		}
 	}
 
 	private function getCurrentTextFormat():TextFormat {
-		if (!this.enabled && this.disabledTextFormat != null) {
+		if (!this._enabled && this.disabledTextFormat != null) {
 			return this.disabledTextFormat;
 		}
 		return this.textFormat;
@@ -657,14 +683,14 @@ class Label extends FeathersControl implements ITextControl {
 		} else {
 			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
 		}
-		if (Std.is(this, IStateContext) && Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = cast(this, IStateContext<Dynamic>);
+		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
+			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
 		}
 		this.addChildAt(this._currentBackgroundSkin, 0);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		if (!this.enabled && this.disabledBackgroundSkin != null) {
+		if (!this._enabled && this.disabledBackgroundSkin != null) {
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
@@ -674,13 +700,13 @@ class Label extends FeathersControl implements ITextControl {
 		if (skin == null) {
 			return;
 		}
-		if (Std.is(skin, IStateObserver)) {
-			cast(skin, IStateObserver).stateContext = null;
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = null;
 		}
+		// we need to restore these values so that they won't be lost the
+		// next time that this skin is used for measurement
 		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
-			// we need to restore these values so that they won't be lost the
-			// next time that this skin is used for measurement
 			this.removeChild(skin);
 		}
 	}
@@ -691,19 +717,22 @@ class Label extends FeathersControl implements ITextControl {
 		this.textField.x = this.paddingLeft;
 		this.textField.width = this.actualWidth - this.paddingLeft - this.paddingRight;
 
+		var textFieldHeight = this._textMeasuredHeight;
 		var maxHeight = this.actualHeight - this.paddingTop - this.paddingBottom;
-		if (this._textMeasuredHeight > maxHeight) {
-			this.textField.height = maxHeight;
-		} else {
-			this.textField.height = this._textMeasuredHeight;
+		if (textFieldHeight > maxHeight) {
+			textFieldHeight = maxHeight;
 		}
+		this.textField.height = textFieldHeight;
+
+		// performance: use the textFieldHeight variable instead of calling the
+		// TextField height getter, which can trigger a text engine reflow
 		switch (this.verticalAlign) {
 			case TOP:
 				this.textField.y = this.paddingTop;
 			case BOTTOM:
-				this.textField.y = this.actualHeight - this.paddingBottom - this.textField.height;
+				this.textField.y = this.actualHeight - this.paddingBottom - textFieldHeight;
 			default: // middle or null
-				this.textField.y = this.paddingTop + (maxHeight - this.textField.height) / 2.0;
+				this.textField.y = this.paddingTop + (maxHeight - textFieldHeight) / 2.0;
 		}
 	}
 
@@ -726,5 +755,9 @@ class Label extends FeathersControl implements ITextControl {
 		if (Std.is(this._currentBackgroundSkin, IValidating)) {
 			cast(this._currentBackgroundSkin, IValidating).validateNow();
 		}
+	}
+
+	private function label_textFormat_changeHandler(event:Event):Void {
+		this.setInvalid(STYLES);
 	}
 }

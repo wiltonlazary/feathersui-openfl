@@ -8,6 +8,8 @@
 
 package feathers.skins;
 
+import feathers.graphics.LineStyle;
+import feathers.graphics.FillStyle;
 import feathers.core.InvalidationFlag;
 
 /**
@@ -22,9 +24,11 @@ class RectangleSkin extends BaseGraphicsPathSkin {
 
 		@since 1.0.0
 	**/
-	public function new() {
-		super();
+	public function new(?fill:FillStyle, ?border:LineStyle) {
+		super(fill, border);
 	}
+
+	private var _cornerRadius:Float = 0.0;
 
 	/**
 		The rectangle may optionally have rounded corners, and this sets their
@@ -32,15 +36,20 @@ class RectangleSkin extends BaseGraphicsPathSkin {
 
 		@since 1.0.0
 	**/
-	public var cornerRadius(default, set):Null<Float> = null;
+	@:flash.property
+	public var cornerRadius(get, set):Float;
+
+	private function get_cornerRadius():Float {
+		return this._cornerRadius;
+	}
 
 	private function set_cornerRadius(value:Float):Float {
-		if (this.cornerRadius == value) {
-			return this.cornerRadius;
+		if (this._cornerRadius == value) {
+			return this._cornerRadius;
 		}
-		this.cornerRadius = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.cornerRadius;
+		this._cornerRadius = value;
+		this.setInvalid(STYLES);
+		return this._cornerRadius;
 	}
 
 	override private function drawPath():Void {
@@ -48,11 +57,12 @@ class RectangleSkin extends BaseGraphicsPathSkin {
 		var thickness = getLineThickness(currentBorder);
 		var thicknessOffset = thickness / 2.0;
 
-		if (this.cornerRadius == 0.0 || this.cornerRadius == null) {
+		if (this._cornerRadius == 0.0) {
 			this.graphics.drawRect(thicknessOffset, thicknessOffset, this.actualWidth - thickness, this.actualHeight - thickness);
 		} else {
-			this.graphics.drawRoundRect(thicknessOffset, thicknessOffset, this.actualWidth - thickness, this.actualHeight - thickness, this.cornerRadius,
-				this.cornerRadius);
+			var ellipseSize = this._cornerRadius * 2.0;
+			ellipseSize = Math.min(ellipseSize, Math.min(this.actualWidth, this.actualHeight));
+			this.graphics.drawRoundRect(thicknessOffset, thicknessOffset, this.actualWidth - thickness, this.actualHeight - thickness, ellipseSize);
 		}
 	}
 }

@@ -59,26 +59,57 @@ class StyleMacro {
 						throw new Error("Variable '"
 							+ field.name
 							+ "' is not initialized. Variables with @:style metadata must be initialized with a default value.",
-							Context.currentPos());
+							field.pos);
 					}
 
-					// generate a setter
 					var clearStyleName = "clearStyle_" + field.name;
+
+					// generate a backing variable
+					var backingVarName = "__" + field.name;
+					extraFields.push({
+						name: backingVarName,
+						access: [Access.APrivate],
+						kind: FieldType.FVar(type, e),
+						pos: field.pos,
+						meta: [
+							{
+								name: ":noCompletion",
+								pos: field.pos
+							}
+						]
+					});
+
+					// generate a getter
+					var getter:Function = {
+						expr: macro {
+							return $i{backingVarName};
+						},
+						ret: type,
+						args: []
+					};
+					extraFields.push({
+						name: "get_" + field.name,
+						access: [Access.APrivate],
+						kind: FieldType.FFun(getter),
+						pos: field.pos
+					});
+
+					// generate a setter
 					var setter:Function = {
 						expr: macro {
 							if (!this.setStyle($v{field.name})) {
-								return $i{field.name};
+								return $i{backingVarName};
 							}
-							if ($i{field.name} == value) {
-								return $i{field.name};
+							if ($i{backingVarName} == value) {
+								return $i{backingVarName};
 							}
 							// in a -final build, this forces the clearStyle
 							// function to be kept if the property is kept
 							// otherwise, it would be removed by dce/closure
 							this._previousClearStyle = $i{clearStyleName};
-							$i{field.name} = value;
-							this.setInvalid(feathers.core.InvalidationFlag.STYLES);
-							return $i{field.name};
+							$i{backingVarName} = value;
+							this.setInvalid(STYLES);
+							return $i{backingVarName};
 						},
 						ret: type,
 						args: [{name: "value", type: type}]
@@ -87,7 +118,7 @@ class StyleMacro {
 						name: "set_" + field.name,
 						access: [Access.APrivate],
 						kind: FieldType.FFun(setter),
-						pos: Context.currentPos()
+						pos: field.pos
 					});
 
 					var clearFunction:Function = {
@@ -102,38 +133,43 @@ class StyleMacro {
 						name: clearStyleName,
 						access: [Access.APublic],
 						kind: FieldType.FFun(clearFunction),
-						pos: Context.currentPos(),
+						pos: field.pos,
 						meta: [
 							{
 								name: ":noCompletion",
-								pos: Context.currentPos()
+								pos: field.pos
 							},
 							{
 								name: ":dox",
 								params: [
 									{
 										expr: EConst(CIdent("hide")),
-										pos: Context.currentPos()
+										pos: field.pos
 									}
 								],
-								pos: Context.currentPos()
+								pos: field.pos
 							}
 						]
 					});
 
-					// change from a variable to a property
+					// change from a variable to a property with get/set
 					var propField:Field = {
 						name: field.name,
 						access: field.access,
-						kind: FieldType.FProp("default", "set", type, e),
+						kind: FieldType.FProp("get", "set", type),
 						pos: field.pos,
 						doc: field.doc,
-						meta: field.meta
+						meta: field.meta.concat([
+							{
+								name: ":flash.property",
+								pos: field.pos
+							}
+						])
 					};
 					return propField;
 				default:
 					throw new Error("@:style metadata not allowed on '" + field.name + "'. Field must be a variable, and no getter or setter may be defined.",
-						Context.currentPos());
+						field.pos);
 			}
 		});
 		if (extraFields.length > 0) {

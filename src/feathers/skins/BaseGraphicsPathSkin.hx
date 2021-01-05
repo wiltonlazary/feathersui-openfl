@@ -8,20 +8,14 @@
 
 package feathers.skins;
 
-import feathers.core.IUIControl;
-import openfl.events.Event;
-import openfl.display.LineScaleMode;
-import openfl.display.InterpolationMethod;
-import openfl.display.SpreadMethod;
 import feathers.controls.IToggle;
-import feathers.core.InvalidationFlag;
 import feathers.core.IStateContext;
-import feathers.core.IStateObserver;
-import feathers.core.MeasureSprite;
-import feathers.events.FeathersEvent;
-import openfl.geom.Matrix;
 import feathers.graphics.FillStyle;
 import feathers.graphics.LineStyle;
+import openfl.display.InterpolationMethod;
+import openfl.display.LineScaleMode;
+import openfl.display.SpreadMethod;
+import openfl.geom.Matrix;
 
 /**
 	A base class for Feathers UI skins that draw a path with a fill and border
@@ -29,47 +23,19 @@ import feathers.graphics.LineStyle;
 
 	@since 1.0.0
 **/
-class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
-	private function new() {
+class BaseGraphicsPathSkin extends ProgrammaticSkin {
+	private function new(?fill:FillStyle, ?border:LineStyle) {
 		super();
-		this.mouseChildren = false;
-		this.tabEnabled = false;
-		this.tabChildren = false;
+		this.fill = fill;
+		this.border = border;
 	}
 
 	private var _previousBorder:LineStyle = null;
 	private var _previousFill:FillStyle = null;
 
-	/**
-		An optional `IStateContext` that is used to change the styles of the
-		skin when its state changes.
-
-		@since 1.0.0
-	**/
-	public var stateContext(default, set):IStateContext<Dynamic>;
-
-	private function set_stateContext(value:IStateContext<Dynamic>):IStateContext<Dynamic> {
-		if (this.stateContext == value) {
-			return this.stateContext;
-		}
-		if (this.stateContext != null) {
-			this.stateContext.removeEventListener(FeathersEvent.STATE_CHANGE, stateContext_stateChangeHandler);
-			if (Std.is(this.stateContext, IToggle)) {
-				this.stateContext.removeEventListener(Event.CHANGE, stateContextToggle_changeHandler);
-			}
-		}
-		this.stateContext = value;
-		if (this.stateContext != null) {
-			this.stateContext.addEventListener(FeathersEvent.STATE_CHANGE, stateContext_stateChangeHandler, false, 0, true);
-			if (Std.is(this.stateContext, IToggle)) {
-				this.stateContext.addEventListener(Event.CHANGE, stateContextToggle_changeHandler);
-			}
-		}
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.stateContext;
-	}
-
 	private var _stateToFill:Map<EnumValue, FillStyle>;
+
+	private var _fill:FillStyle;
 
 	/**
 		How the path's fill is styled. For example, it could be a solid color,
@@ -77,16 +43,23 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		@since 1.0.0
 	**/
-	public var fill(default, set):FillStyle = SolidColor(0xcccccc);
+	@:flash.property
+	public var fill(get, set):FillStyle;
+
+	private function get_fill():FillStyle {
+		return this._fill;
+	}
 
 	private function set_fill(value:FillStyle):FillStyle {
-		if (this.fill == value) {
-			return this.fill;
+		if (this._fill == value) {
+			return this._fill;
 		}
-		this.fill = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.fill;
+		this._fill = value;
+		this.setInvalid(STYLES);
+		return this._fill;
 	}
+
+	private var _disabledFill:FillStyle;
 
 	/**
 		How the path's fill is styled when the state context is disabled. To
@@ -97,16 +70,23 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		@since 1.0.0
 	**/
-	public var disabledFill(default, set):FillStyle = null;
+	@:flash.property
+	public var disabledFill(get, set):FillStyle;
+
+	private function get_disabledFill():FillStyle {
+		return this._disabledFill;
+	}
 
 	private function set_disabledFill(value:FillStyle):FillStyle {
-		if (this.disabledFill == value) {
-			return this.disabledFill;
+		if (this._disabledFill == value) {
+			return this._disabledFill;
 		}
-		this.disabledFill = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.disabledFill;
+		this._disabledFill = value;
+		this.setInvalid(STYLES);
+		return this._disabledFill;
 	}
+
+	private var _selectedFill:FillStyle;
 
 	/**
 		How the path's fill is styled when the state context is selected. To
@@ -116,34 +96,48 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		@since 1.0.0
 	**/
-	public var selectedFill(default, set):FillStyle = null;
+	@:flash.property
+	public var selectedFill(get, set):FillStyle;
+
+	private function get_selectedFill():FillStyle {
+		return this._selectedFill;
+	}
 
 	private function set_selectedFill(value:FillStyle):FillStyle {
-		if (this.selectedFill == value) {
-			return this.selectedFill;
+		if (this._selectedFill == value) {
+			return this._selectedFill;
 		}
-		this.selectedFill = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.selectedFill;
+		this._selectedFill = value;
+		this.setInvalid(STYLES);
+		return this._selectedFill;
 	}
 
 	private var _stateToBorder:Map<EnumValue, LineStyle>;
+
+	private var _border:LineStyle;
 
 	/**
 		How the path's border is styled.
 
 		@since 1.0.0
 	**/
-	public var border(default, set):LineStyle;
+	@:flash.property
+	public var border(get, set):LineStyle;
+
+	private function get_border():LineStyle {
+		return this._border;
+	}
 
 	private function set_border(value:LineStyle):LineStyle {
-		if (this.border == value) {
-			return this.border;
+		if (this._border == value) {
+			return this._border;
 		}
-		this.border = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.border;
+		this._border = value;
+		this.setInvalid(STYLES);
+		return this._border;
 	}
+
+	private var _disabledBorder:LineStyle;
 
 	/**
 		How the path's border is styled when the state context is disabled. To
@@ -154,16 +148,23 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		@since 1.0.0
 	**/
-	public var disabledBorder(default, set):LineStyle;
+	@:flash.property
+	public var disabledBorder(get, set):LineStyle;
+
+	private function get_disabledBorder():LineStyle {
+		return this._disabledBorder;
+	}
 
 	private function set_disabledBorder(value:LineStyle):LineStyle {
-		if (this.disabledBorder == value) {
-			return this.disabledBorder;
+		if (this._disabledBorder == value) {
+			return this._disabledBorder;
 		}
-		this.disabledBorder = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.disabledBorder;
+		this._disabledBorder = value;
+		this.setInvalid(STYLES);
+		return this._disabledBorder;
 	}
+
+	private var _selectedBorder:LineStyle;
 
 	/**
 		How the path's border is styled when the state context is selected. To
@@ -173,15 +174,20 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		@since 1.0.0
 	**/
-	public var selectedBorder(default, set):LineStyle;
+	@:flash.property
+	public var selectedBorder(get, set):LineStyle;
+
+	private function get_selectedBorder():LineStyle {
+		return this._selectedBorder;
+	}
 
 	private function set_selectedBorder(value:LineStyle):LineStyle {
-		if (this.selectedBorder == value) {
-			return this.selectedBorder;
+		if (this._selectedBorder == value) {
+			return this._selectedBorder;
 		}
-		this.selectedBorder = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.selectedBorder;
+		this._selectedBorder = value;
+		this.setInvalid(STYLES);
+		return this._selectedBorder;
 	}
 
 	/**
@@ -190,7 +196,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		If a fill is not defined for a specific state, returns `null`.
 
-		@see `BaseGraphicsPathSkin.stateContext`
+		@see `ProgrammaticSkin.stateContext`
 		@see `BaseGraphicsPathSkin.fill`
 		@see `BaseGraphicsPathSkin.setFillForState`
 
@@ -212,7 +218,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		To clear a state's fill, pass in `null`.
 
-		@see `BaseGraphicsPathSkin.stateContext`
+		@see `ProgrammaticSkin.stateContext`
 		@see `BaseGraphicsPathSkin.fill`
 		@see `BaseGraphicsPathSkin.getFillForState`
 
@@ -226,7 +232,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 			return;
 		}
 		this._stateToFill.set(state, fill);
-		this.setInvalid(InvalidationFlag.STYLES);
+		this.setInvalid(STYLES);
 	}
 
 	/**
@@ -235,7 +241,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		If a border is not defined for a specific state, returns `null`.
 
-		@see `BaseGraphicsPathSkin.stateContext`
+		@see `ProgrammaticSkin.stateContext`
 		@see `BaseGraphicsPathSkin.border`
 		@see `BaseGraphicsPathSkin.setBorderForState`
 
@@ -257,7 +263,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		To clear a state's border, pass in `null`.
 
-		@see `BaseGraphicsPathSkin.stateContext`
+		@see `ProgrammaticSkin.stateContext`
 		@see `BaseGraphicsPathSkin.border`
 		@see `BaseGraphicsPathSkin.getBorderForState`
 
@@ -271,7 +277,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 			return;
 		}
 		this._stateToBorder.set(state, border);
-		this.setInvalid(InvalidationFlag.STYLES);
+		this.setInvalid(STYLES);
 	}
 
 	override private function update():Void {
@@ -286,7 +292,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		var currentFill = this.getCurrentFill();
 		this.applyFillStyle(currentFill);
 		this.drawPath();
-		if (currentFill != null) {
+		if (currentFill != null && currentFill != None) {
 			this.graphics.endFill();
 		}
 	}
@@ -304,6 +310,10 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 			return;
 		}
 		switch (lineStyle) {
+			case None:
+				{
+					this.graphics.lineStyle(null);
+				}
 			case SolidColor(thickness, color, alpha, pixelHinting, scaleMode, caps, joints, miterLimit):
 				{
 					if (color == null) {
@@ -323,10 +333,11 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 					}
 					this.graphics.lineStyle(thickness, color, alpha, pixelHinting, scaleMode, caps, joints, miterLimit);
 				}
-			case Gradient(thickness, type, colors, alphas, ratios, radians, spreadMethod, interpolationMethod, focalPointRatio):
+			case Gradient(thickness, type, colors, alphas, ratios, matrixCallback, spreadMethod, interpolationMethod, focalPointRatio):
 				{
-					if (radians == null) {
-						radians = 0.0;
+					var callback:(Float, Float, ?Float, ?Float, ?Float) -> Matrix = matrixCallback;
+					if (callback == null) {
+						callback = getDefaultGradientMatrix;
 					}
 					if (spreadMethod == null) {
 						spreadMethod = SpreadMethod.PAD;
@@ -337,10 +348,22 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 					if (focalPointRatio == null) {
 						focalPointRatio = 0.0;
 					}
-					var matrix = getGradientMatrix(radians);
+					var matrix = callback(this.getDefaultGradientMatrixWidth(), this.getDefaultGradientMatrixHeight(), this.getDefaultGradientMatrixRadians(),
+						this.getDefaultGradientMatrixTx(), this.getDefaultGradientMatrixTy());
 					this.graphics.lineStyle(thickness);
 					this.graphics.lineGradientStyle(type, #if flash cast #end colors, alphas, ratios, matrix, spreadMethod, interpolationMethod,
 						focalPointRatio);
+				}
+			case Bitmap(thickness, bitmapData, matrix, repeat, smooth):
+				{
+					if (repeat == null) {
+						repeat = true;
+					}
+					if (smooth == null) {
+						smooth = false;
+					}
+					this.graphics.lineStyle(thickness);
+					this.graphics.lineBitmapStyle(bitmapData, matrix, repeat, smooth);
 				}
 		}
 	}
@@ -350,6 +373,11 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 			return;
 		}
 		switch (fillStyle) {
+			case None:
+				{
+					// no fill style to apply
+					return;
+				}
 			case SolidColor(color, alpha):
 				{
 					if (alpha == null) {
@@ -357,10 +385,11 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 					}
 					this.graphics.beginFill(color, alpha);
 				}
-			case Gradient(type, colors, alphas, ratios, radians, spreadMethod, interpolationMethod, focalPointRatio):
+			case Gradient(type, colors, alphas, ratios, matrixCallback, spreadMethod, interpolationMethod, focalPointRatio):
 				{
-					if (radians == null) {
-						radians = 0.0;
+					var callback:(Float, Float, ?Float, ?Float, ?Float) -> Matrix = matrixCallback;
+					if (callback == null) {
+						callback = getDefaultGradientMatrix;
 					}
 					if (spreadMethod == null) {
 						spreadMethod = SpreadMethod.PAD;
@@ -371,7 +400,8 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 					if (focalPointRatio == null) {
 						focalPointRatio = 0.0;
 					}
-					var matrix = getGradientMatrix(radians);
+					var matrix = callback(this.getDefaultGradientMatrixWidth(), this.getDefaultGradientMatrixHeight(), this.getDefaultGradientMatrixRadians(),
+						this.getDefaultGradientMatrixTx(), this.getDefaultGradientMatrixTy());
 					this.graphics.beginGradientFill(type, #if flash cast #end colors, alphas, ratios, matrix, spreadMethod, interpolationMethod,
 						focalPointRatio);
 				}
@@ -397,7 +427,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 				{
 					return thickness;
 				}
-			case Gradient(thickness, colors, alphas, ratios, radians):
+			case Gradient(thickness, colors, alphas, ratios, matrixCallback):
 				{
 					return thickness;
 				}
@@ -408,10 +438,30 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		}
 	}
 
-	private function getGradientMatrix(radians:Float):Matrix {
+	private function getDefaultGradientMatrix(width:Float, height:Float, ?radians:Float = 0.0, ?tx:Float = 0.0, ?ty:Float = 0.0):Matrix {
 		var matrix = new Matrix();
-		matrix.createGradientBox(this.actualWidth, this.actualHeight, radians);
+		matrix.createGradientBox(width, height, radians, tx, ty);
 		return matrix;
+	}
+
+	private function getDefaultGradientMatrixWidth():Float {
+		return this.actualWidth;
+	}
+
+	private function getDefaultGradientMatrixHeight():Float {
+		return this.actualHeight;
+	}
+
+	private function getDefaultGradientMatrixRadians():Float {
+		return 0.0;
+	}
+
+	private function getDefaultGradientMatrixTx():Float {
+		return 0.0;
+	}
+
+	private function getDefaultGradientMatrixTy():Float {
+		return 0.0;
 	}
 
 	/**
@@ -420,7 +470,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		@see `BaseGraphicsPathSkin.border`
 		@see `BaseGraphicsPathSkin.getBorderForState`
 		@see `BaseGraphicsPathSkin.setBorderForState`
-		@see `BaseGraphicsPathSkin.stateContext`
+		@see `ProgrammaticSkin.stateContext`
 
 		@since 1.0.0
 	**/
@@ -429,32 +479,35 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		if (this._previousBorder != null) {
 			return this._previousBorder;
 		}
-		return getCurrentBorderWithoutCache();
+		return this.getCurrentBorderWithoutCache();
 	}
 
 	private function getCurrentBorderWithoutCache():LineStyle {
-		if (this.stateContext == null) {
-			return this.border;
+		var stateContext = this._stateContext;
+		if (stateContext == null && Std.is(this._uiContext, IStateContext)) {
+			stateContext = cast(this._uiContext, IStateContext<Dynamic>);
 		}
-		if (this._stateToBorder != null) {
-			var result = this._stateToBorder.get(this.stateContext.currentState);
+		if (this._stateToBorder != null && stateContext != null) {
+			var result = this._stateToBorder.get(stateContext.currentState);
 			if (result != null) {
 				return result;
 			}
 		}
-		if (this.disabledBorder != null && Std.is(this.stateContext, IUIControl)) {
-			var control = cast(this.stateContext, IUIControl);
-			if (!control.enabled) {
-				return this.disabledBorder;
+		if (this._uiContext == null) {
+			return this._border;
+		}
+		if (this._disabledBorder != null) {
+			if (!this._uiContext.enabled) {
+				return this._disabledBorder;
 			}
 		}
-		if (this.selectedBorder != null && Std.is(this.stateContext, IToggle)) {
-			var toggle = cast(this.stateContext, IToggle);
+		if (this._selectedBorder != null && Std.is(this._uiContext, IToggle)) {
+			var toggle = cast(this._uiContext, IToggle);
 			if (toggle.selected) {
-				return this.selectedBorder;
+				return this._selectedBorder;
 			}
 		}
-		return this.border;
+		return this._border;
 	}
 
 	/**
@@ -463,7 +516,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		@see `BaseGraphicsPathSkin.fill`
 		@see `BaseGraphicsPathSkin.getFillForState`
 		@see `BaseGraphicsPathSkin.setFillForState`
-		@see `BaseGraphicsPathSkin.stateContext`
+		@see `ProgrammaticSkin.stateContext`
 
 		@since 1.0.0
 	**/
@@ -472,69 +525,47 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		if (this._previousFill != null) {
 			return this._previousFill;
 		}
-		return getCurrentFillWithoutCache();
+		return this.getCurrentFillWithoutCache();
 	}
 
 	private function getCurrentFillWithoutCache() {
-		if (this.stateContext == null) {
-			return this.fill;
+		var stateContext = this._stateContext;
+		if (stateContext == null && Std.is(this._uiContext, IStateContext)) {
+			stateContext = cast(this._uiContext, IStateContext<Dynamic>);
 		}
-		if (this._stateToFill != null) {
-			var result = this._stateToFill.get(this.stateContext.currentState);
+		if (this._stateToFill != null && stateContext != null) {
+			var result = this._stateToFill.get(stateContext.currentState);
 			if (result != null) {
 				return result;
 			}
 		}
-		if (this.disabledFill != null && Std.is(this.stateContext, IUIControl)) {
-			var control = cast(this.stateContext, IUIControl);
-			if (!control.enabled) {
-				return this.disabledFill;
+		if (this._uiContext == null) {
+			return this._fill;
+		}
+		if (this._disabledFill != null) {
+			if (!this._uiContext.enabled) {
+				return this._disabledFill;
 			}
 		}
-		if (this.selectedFill != null && Std.is(this.stateContext, IToggle)) {
-			var toggle = cast(this.stateContext, IToggle);
+		if (this._selectedFill != null && Std.is(this._uiContext, IToggle)) {
+			var toggle = cast(this._uiContext, IToggle);
 			if (toggle.selected) {
-				return this.selectedFill;
+				return this._selectedFill;
 			}
 		}
-		return this.fill;
+		return this._fill;
 	}
 
-	/**
-		Checks if a the current state requires the skin to be redrawn.
-
-		Subclasses may need to override this method if they add any additional
-		state-dependent properties similar to `getCurrentBorder` and
-		`getCurrentFill`.
-
-		@since 1.0.0
-	**/
-	@:dox(show)
-	private function needsStateUpdate():Bool {
+	override private function needsStateUpdate():Bool {
 		var updated = false;
-		if (this._previousBorder != getCurrentBorderWithoutCache()) {
+		if (this._previousBorder != this.getCurrentBorderWithoutCache()) {
 			this._previousBorder = null;
 			updated = true;
 		}
-		if (this._previousFill != getCurrentFillWithoutCache()) {
+		if (this._previousFill != this.getCurrentFillWithoutCache()) {
 			this._previousFill = null;
 			updated = true;
 		}
 		return updated;
-	}
-
-	private function checkForStateChange():Void {
-		if (!this.needsStateUpdate()) {
-			return;
-		}
-		this.setInvalid(InvalidationFlag.STATE);
-	}
-
-	private function stateContext_stateChangeHandler(event:FeathersEvent):Void {
-		this.checkForStateChange();
-	}
-
-	private function stateContextToggle_changeHandler(event:Event):Void {
-		this.checkForStateChange();
 	}
 }

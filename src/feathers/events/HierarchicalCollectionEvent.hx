@@ -8,10 +8,16 @@
 
 package feathers.events;
 
-import openfl._internal.utils.ObjectPool;
 import openfl.events.EventType;
 import openfl.events.Event;
 import openfl.events.IEventDispatcher;
+#if !flash
+#if (openfl >= "9.1.0")
+import openfl.utils.ObjectPool;
+#else
+import openfl._internal.utils.ObjectPool;
+#end
+#end
 
 /**
 	Events dispatched by hierarchical collections.
@@ -93,9 +99,14 @@ class HierarchicalCollectionEvent extends Event {
 
 	#if !flash
 	private static var _pool = new ObjectPool<HierarchicalCollectionEvent>(() -> return new HierarchicalCollectionEvent(null, null, false, false), (event) -> {
+		event.target = null;
+		event.currentTarget = null;
 		event.__preventDefault = false;
 		event.__isCanceled = false;
 		event.__isCanceledNow = false;
+		event.addedItem = null;
+		event.removedItem = null;
+		event.location = null;
 	});
 	#end
 

@@ -41,7 +41,7 @@ class SteelTextAreaStyles {
 
 				if (textArea.backgroundSkin == null) {
 					var backgroundSkin = new RectangleSkin();
-					backgroundSkin.cornerRadius = 6.0;
+					backgroundSkin.cornerRadius = 3.0;
 					backgroundSkin.width = 160.0;
 					backgroundSkin.height = 120.0;
 					backgroundSkin.fill = theme.getInsetFill();
@@ -53,8 +53,8 @@ class SteelTextAreaStyles {
 				if (textArea.textFormat == null) {
 					textArea.textFormat = theme.getTextFormat();
 				}
-				if (textArea.getTextFormatForState(DISABLED) == null) {
-					textArea.setTextFormatForState(DISABLED, theme.getDisabledTextFormat());
+				if (textArea.disabledTextFormat == null) {
+					textArea.disabledTextFormat = theme.getDisabledTextFormat();
 				}
 				if (textArea.promptTextFormat == null) {
 					textArea.promptTextFormat = theme.getSecondaryTextFormat();

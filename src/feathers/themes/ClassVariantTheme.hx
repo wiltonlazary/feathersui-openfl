@@ -22,6 +22,7 @@ import feathers.style.ITheme;
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CLEAR)
 class ClassVariantTheme implements ITheme {
 	/**
 		Creates a new `ClassVariantTheme` object.

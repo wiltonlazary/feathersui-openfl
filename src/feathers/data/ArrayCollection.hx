@@ -20,6 +20,17 @@ import openfl.events.EventDispatcher;
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
+@:event(feathers.events.FlatCollectionEvent.ADD_ITEM)
+@:event(feathers.events.FlatCollectionEvent.REMOVE_ITEM)
+@:event(feathers.events.FlatCollectionEvent.REPLACE_ITEM)
+@:event(feathers.events.FlatCollectionEvent.REMOVE_ALL)
+@:event(feathers.events.FlatCollectionEvent.RESET)
+@:event(feathers.events.FlatCollectionEvent.UPDATE_ITEM)
+@:event(feathers.events.FlatCollectionEvent.UPDATE_ALL)
+@:event(feathers.events.FlatCollectionEvent.FILTER_CHANGE)
+@:event(feathers.events.FlatCollectionEvent.SORT_CHANGE)
+@:meta(DefaultProperty("array"))
 @defaultXmlProperty("array")
 class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 	/**
@@ -37,6 +48,8 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 
 	private var _filterAndSortData:Array<T> = null;
 
+	private var _array:Array<T> = null;
+
 	/**
 		The `Array` data source for this collection.
 
@@ -48,19 +61,24 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 
 		@since 1.0.0
 	**/
-	public var array(default, set):Array<T> = null;
+	@:flash.property
+	public var array(get, set):Array<T>;
+
+	private function get_array():Array<T> {
+		return this._array;
+	}
 
 	private function set_array(value:Array<T>):Array<T> {
-		if (this.array == value) {
-			return this.array;
+		if (this._array == value) {
+			return this._array;
 		}
 		if (value == null) {
 			value = [];
 		}
-		this.array = value;
+		this._array = value;
 		FlatCollectionEvent.dispatch(this, FlatCollectionEvent.RESET, -1);
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.array;
+		return this._array;
 	}
 
 	/**
@@ -76,7 +94,7 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			return this._filterAndSortData.length;
 		}
-		return this.array.length;
+		return this._array.length;
 	}
 
 	private var _pendingRefresh:Bool = false;
@@ -140,7 +158,7 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			return this._filterAndSortData[index];
 		}
-		return this.array[index];
+		return this._array[index];
 	}
 
 	/**
@@ -155,8 +173,8 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		}
 		if (this._filterAndSortData != null) {
 			var oldItem = this._filterAndSortData[index];
-			var unfilteredIndex = this.array.indexOf(oldItem);
-			this.array[unfilteredIndex] = item;
+			var unfilteredIndex = this._array.indexOf(oldItem);
+			this._array[unfilteredIndex] = item;
 			if (this._filterFunction != null) {
 				var includeItem = this._filterFunction(item);
 				if (includeItem) {
@@ -184,8 +202,8 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 			}
 		}
 		// no filter or sort
-		var oldItem = (index < this.array.length) ? this.array[index] : null;
-		this.array[index] = item;
+		var oldItem = (index < this._array.length) ? this._array[index] : null;
+		this._array[index] = item;
 		FlatCollectionEvent.dispatch(this, FlatCollectionEvent.REPLACE_ITEM, index, item, oldItem);
 		FeathersEvent.dispatch(this, Event.CHANGE);
 	}
@@ -236,7 +254,7 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			this._filterAndSortData.resize(0);
 		}
-		this.array.resize(0);
+		this._array.resize(0);
 		if (collection != null) {
 			for (item in collection) {
 				this.addAtInternal(item, this.length, false);
@@ -261,7 +279,7 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			this._filterAndSortData.remove(item);
 		}
-		this.array.remove(item);
+		this._array.remove(item);
 		FlatCollectionEvent.dispatch(this, FlatCollectionEvent.REMOVE_ITEM, index, null, item);
 		FeathersEvent.dispatch(this, Event.CHANGE);
 	}
@@ -280,10 +298,10 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			item = this._filterAndSortData[index];
 			this._filterAndSortData.remove(item);
-			this.array.remove(item);
+			this._array.remove(item);
 		} else {
-			item = this.array[index];
-			this.array.remove(item);
+			item = this._array[index];
+			this._array.remove(item);
 		}
 		FlatCollectionEvent.dispatch(this, FlatCollectionEvent.REMOVE_ITEM, index, null, item);
 		FeathersEvent.dispatch(this, Event.CHANGE);
@@ -297,14 +315,14 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._pendingRefresh) {
 			this.refreshFilterAndSort();
 		}
-		if (this.array.length == 0) {
+		if (this._array.length == 0) {
 			// nothing to remove
 			return;
 		}
 		if (this._filterAndSortData != null) {
 			this._filterAndSortData.resize(0);
 		}
-		this.array.resize(0);
+		this._array.resize(0);
 		FlatCollectionEvent.dispatch(this, FlatCollectionEvent.REMOVE_ALL, -1);
 		FeathersEvent.dispatch(this, Event.CHANGE);
 	}
@@ -319,7 +337,7 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			return this._filterAndSortData.indexOf(item);
 		}
-		return this.array.indexOf(item);
+		return this._array.indexOf(item);
 	}
 
 	/**
@@ -339,7 +357,7 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			return this._filterAndSortData.iterator();
 		}
-		return this.array.iterator();
+		return this._array.iterator();
 	}
 
 	/**
@@ -376,6 +394,102 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		FeathersEvent.dispatch(this, Event.CHANGE);
 	}
 
+	/**
+		Using a callback that returns either `true` or `false`, returns the
+		first item in the collection where the callback returns `true`.
+
+		@since 1.0.0
+	**/
+	public function find(callback:(item:T, index:Int, collection:ArrayCollection<T>) -> Bool):T {
+		for (i in 0...this.length) {
+			var item = this.get(i);
+			var result = callback(item, i, this);
+			if (result) {
+				return item;
+			}
+		}
+		return null;
+	}
+
+	/**
+		Using a callback that returns either `true` or `false`, returns the
+		first item in the collection where the callback returns `true`.
+
+		@since 1.0.0
+	**/
+	public function findIndex(callback:(item:T, index:Int, collection:ArrayCollection<T>) -> Bool):Int {
+		for (i in 0...this.length) {
+			var item = this.get(i);
+			var result = callback(item, i, this);
+			if (result) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	/**
+		Using a callback that returns either `true` or `false`, determines if
+		at all items in the collection return `true`.
+
+		@since 1.0.0
+	**/
+	public function some(callback:(item:T, index:Int, collection:ArrayCollection<T>) -> Bool):Bool {
+		for (i in 0...this.length) {
+			var item = this.get(i);
+			var result = callback(item, i, this);
+			if (result) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+		Using a callback that returns either `true` or `false`, determines if
+		at least one item in the collection returns `true`.
+
+		@since 1.0.0
+	**/
+	public function every(callback:(item:T, index:Int, collection:ArrayCollection<T>) -> Bool):Bool {
+		for (i in 0...this.length) {
+			var item = this.get(i);
+			var result = callback(item, i, this);
+			if (!result) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+		Iterates through every item in the collection and passes it to a
+		callback.
+
+		@since 1.0.0
+	**/
+	public function forEach(callback:(item:T, index:Int, collection:ArrayCollection<T>) -> Void):Void {
+		for (i in 0...this.length) {
+			var item = this.get(i);
+			callback(item, i, this);
+		}
+	}
+
+	/**
+		Creates a new collection using a callback for each item in the existing
+		collection.
+
+		@since 1.0.0
+	**/
+	public function map<U>(callback:(item:T, index:Int, collection:ArrayCollection<T>) -> U):ArrayCollection<U> {
+		var result:Array<U> = [];
+		for (i in 0...this.length) {
+			var item = this.get(i);
+			result.push(callback(item, i, this));
+		}
+		return new ArrayCollection(result);
+	}
+
 	private function refreshFilterAndSort():Void {
 		this._pendingRefresh = false;
 		if (this._filterFunction != null) {
@@ -386,8 +500,8 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 			} else {
 				result = [];
 			}
-			for (i in 0...this.array.length) {
-				var item = this.array[i];
+			for (i in 0...this._array.length) {
+				var item = this._array[i];
 				if (this._filterFunction(item)) {
 					result.push(item);
 				}
@@ -397,13 +511,13 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		{
 			var result = this._filterAndSortData;
 			if (result != null) {
-				result.resize(this.array.length);
-				for (i in 0...this.array.length) {
-					result[i] = this.array[i];
+				result.resize(this._array.length);
+				for (i in 0...this._array.length) {
+					result[i] = this._array[i];
 				}
 			} else {
 				// simply make a copy!
-				result = this.array.slice(0);
+				result = this._array.slice(0);
 			}
 			this._filterAndSortData = result;
 		} else // no filter or sort
@@ -439,15 +553,15 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 		if (this._filterAndSortData != null) {
 			// if the item is added at the end of the filtered data
 			// then add it at the end of the unfiltered data
-			var unfilteredIndex = this.array.length;
+			var unfilteredIndex = this._array.length;
 			if (index < this._filterAndSortData.length) {
 				// find the item at the index in the filtered data, and use its
 				// index from the unfiltered data
 				var oldItem = this._filterAndSortData[index];
-				unfilteredIndex = this.array.indexOf(oldItem);
+				unfilteredIndex = this._array.indexOf(oldItem);
 			}
 			// always add to the original data
-			this.array.insert(unfilteredIndex, item);
+			this._array.insert(unfilteredIndex, item);
 			// but check if the item should be in the filtered data
 			var includeItem = true;
 			if (this._filterFunction != null) {
@@ -466,7 +580,7 @@ class ArrayCollection<T> extends EventDispatcher implements IFlatCollection<T> {
 				}
 			}
 		} else {
-			this.array.insert(index, item);
+			this._array.insert(index, item);
 			if (dispatchEvents) {
 				FlatCollectionEvent.dispatch(this, FlatCollectionEvent.ADD_ITEM, index, item);
 				FeathersEvent.dispatch(this, Event.CHANGE);

@@ -8,6 +8,8 @@
 
 package feathers.data;
 
+import feathers.controls.TabBar;
+
 /**
 	Represents the current state of a `TabBar` tab renderer.
 
@@ -30,11 +32,18 @@ class TabBarItemState {
 	}
 
 	/**
+		Returns a reference to the `TabBar` that contains this item.
+
+		@since 1.0.0
+	**/
+	public var owner:TabBar;
+
+	/**
 		An item from the collection used as the `TabBar` data provider.
 
 		@since 1.0.0
 	**/
-	public var data(default, null):Dynamic;
+	public var data:Dynamic;
 
 	/**
 		The position of the data within the collection used as the `TabBar`
@@ -42,7 +51,7 @@ class TabBarItemState {
 
 		@since 1.0.0
 	**/
-	public var index(default, null):Int;
+	public var index:Int;
 
 	/**
 		Returns whether the item is selected or not.
@@ -52,7 +61,7 @@ class TabBarItemState {
 
 		@since 1.0.0
 	**/
-	public var selected(default, null):Bool;
+	public var selected:Bool;
 
 	/**
 		Returns the text to display for the item, as returned by the function
@@ -62,5 +71,14 @@ class TabBarItemState {
 
 		@since 1.0.0
 	**/
-	public var text(default, null):String;
+	public var text:String;
+
+	/**
+		Returns whether the item is enabled or not.
+
+		@see `feathers.core.IUIControl.enabled`
+
+		@since 1.0.0
+	**/
+	public var enabled:Bool;
 }

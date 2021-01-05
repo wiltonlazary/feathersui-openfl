@@ -8,6 +8,7 @@
 
 package feathers.layout;
 
+import feathers.layout.AnchorLayout.Anchor;
 import feathers.events.FeathersEvent;
 import feathers.layout.AnchorLayout.AbstractAnchor;
 import openfl.events.Event;
@@ -21,6 +22,7 @@ import openfl.events.EventDispatcher;
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
 class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 	/**
 		Creates `AnchorLayoutData` that centers the object both horizontally and
@@ -300,6 +302,8 @@ class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 		this.verticalCenter = verticalCenter;
 	}
 
+	private var _top:AbstractAnchor = null;
+
 	/**
 		The position, measured in pixels, of the object's top edge relative to
 		the top anchor, or, if there is no top anchor, then the position is
@@ -323,16 +327,31 @@ class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 
 		@since 1.0.0
 	**/
-	public var top(default, set):AbstractAnchor = null;
+	@:flash.property
+	public var top(get, set):AbstractAnchor;
+
+	private function get_top():AbstractAnchor {
+		return this._top;
+	}
 
 	private function set_top(value:AbstractAnchor):AbstractAnchor {
-		if (this.top == value) {
-			return this.top;
+		if (this._top == value) {
+			return this._top;
 		}
-		this.top = value;
+		if (this._top != null) {
+			var top:Anchor = this._top;
+			top.removeEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler);
+		}
+		this._top = value;
+		if (this._top != null) {
+			var top:Anchor = this._top;
+			top.addEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler, false, 0, true);
+		}
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.top;
+		return this._top;
 	}
+
+	private var _right:AbstractAnchor = null;
 
 	/**
 		The position, measured in pixels, of the object's right edge relative to
@@ -357,16 +376,31 @@ class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 
 		@since 1.0.0
 	**/
-	public var right(default, set):AbstractAnchor = null;
+	@:flash.property
+	public var right(get, set):AbstractAnchor;
+
+	private function get_right():AbstractAnchor {
+		return this._right;
+	}
 
 	private function set_right(value:AbstractAnchor):AbstractAnchor {
-		if (this.right == value) {
-			return this.right;
+		if (this._right == value) {
+			return this._right;
 		}
-		this.right = value;
+		if (this._right != null) {
+			var anchor:Anchor = this._right;
+			anchor.removeEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler);
+		}
+		this._right = value;
+		if (this._right != null) {
+			var anchor:Anchor = this._right;
+			anchor.addEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler, false, 0, true);
+		}
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.right;
+		return this._right;
 	}
+
+	private var _bottom:AbstractAnchor = null;
 
 	/**
 		The position, measured in pixels, of the object's bottom edge relative
@@ -391,16 +425,31 @@ class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 
 		@since 1.0.0
 	**/
-	public var bottom(default, set):AbstractAnchor = null;
+	@:flash.property
+	public var bottom(get, set):AbstractAnchor;
+
+	private function get_bottom():AbstractAnchor {
+		return this._bottom;
+	}
 
 	private function set_bottom(value:AbstractAnchor):AbstractAnchor {
-		if (this.bottom == value) {
-			return this.bottom;
+		if (this._bottom == value) {
+			return this._bottom;
 		}
-		this.bottom = value;
+		if (this._bottom != null) {
+			var anchor:Anchor = this._bottom;
+			anchor.removeEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler);
+		}
+		this._bottom = value;
+		if (this._bottom != null) {
+			var anchor:Anchor = this._bottom;
+			anchor.addEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler, false, 0, true);
+		}
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.bottom;
+		return this._bottom;
 	}
+
+	private var _left:AbstractAnchor = null;
 
 	/**
 		The position, measured in pixels, of the object's left edge relative to
@@ -425,16 +474,31 @@ class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 
 		@since 1.0.0
 	**/
-	public var left(default, set):AbstractAnchor = null;
+	@:flash.property
+	public var left(get, set):AbstractAnchor;
+
+	private function get_left():AbstractAnchor {
+		return this._left;
+	}
 
 	private function set_left(value:AbstractAnchor):AbstractAnchor {
-		if (this.left == value) {
-			return this.left;
+		if (this._left == value) {
+			return this._left;
 		}
-		this.left = value;
+		if (this._left != null) {
+			var anchor:Anchor = this._left;
+			anchor.removeEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler);
+		}
+		this._left = value;
+		if (this._left != null) {
+			var anchor:Anchor = this._left;
+			anchor.addEventListener(Event.CHANGE, anchorLayoutData_anchor_changeHandler, false, 0, true);
+		}
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.left;
+		return this._left;
 	}
+
+	private var _horizontalCenter:Null<Float> = null;
 
 	/**
 		The position, measured in pixels, of the object's horizontal center
@@ -460,16 +524,23 @@ class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 
 		@since 1.0.0
 	**/
-	public var horizontalCenter(default, set):Null<Float> = null;
+	@:flash.property
+	public var horizontalCenter(get, set):Null<Float>;
+
+	private function get_horizontalCenter():Null<Float> {
+		return this._horizontalCenter;
+	}
 
 	private function set_horizontalCenter(value:Null<Float>):Null<Float> {
-		if (this.horizontalCenter == value) {
-			return this.horizontalCenter;
+		if (this._horizontalCenter == value) {
+			return this._horizontalCenter;
 		}
-		this.horizontalCenter = value;
+		this._horizontalCenter = value;
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.horizontalCenter;
+		return this._horizontalCenter;
 	}
+
+	private var _verticalCenter:Null<Float> = null;
 
 	/**
 		The position, measured in pixels, of the object's vertical center
@@ -495,14 +566,23 @@ class AnchorLayoutData extends EventDispatcher implements ILayoutData {
 
 		@since 1.0.0
 	**/
-	public var verticalCenter(default, set):Null<Float> = null;
+	@:flash.property
+	public var verticalCenter(get, set):Null<Float>;
+
+	private function get_verticalCenter():Null<Float> {
+		return this._verticalCenter;
+	}
 
 	private function set_verticalCenter(value:Null<Float>):Null<Float> {
-		if (this.verticalCenter == value) {
-			return this.verticalCenter;
+		if (this._verticalCenter == value) {
+			return this._verticalCenter;
 		}
-		this.verticalCenter = value;
+		this._verticalCenter = value;
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.verticalCenter;
+		return this._verticalCenter;
+	}
+
+	private function anchorLayoutData_anchor_changeHandler(event:Event):Void {
+		FeathersEvent.dispatch(this, Event.CHANGE);
 	}
 }

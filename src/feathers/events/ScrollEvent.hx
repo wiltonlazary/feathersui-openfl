@@ -8,10 +8,16 @@
 
 package feathers.events;
 
-import openfl._internal.utils.ObjectPool;
 import openfl.events.Event;
 import openfl.events.EventType;
 import openfl.events.IEventDispatcher;
+#if !flash
+#if (openfl >= "9.1.0")
+import openfl.utils.ObjectPool;
+#else
+import openfl._internal.utils.ObjectPool;
+#end
+#end
 
 /**
 	Events dispatched by scrolling containers.
@@ -46,6 +52,8 @@ class ScrollEvent extends Event {
 
 	#if !flash
 	private static var _pool = new ObjectPool<ScrollEvent>(() -> return new ScrollEvent(null, false, false), (event) -> {
+		event.target = null;
+		event.currentTarget = null;
 		event.__preventDefault = false;
 		event.__isCanceled = false;
 		event.__isCanceledNow = false;

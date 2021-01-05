@@ -15,6 +15,7 @@ import openfl.events.IEventDispatcher;
 
 	@see `feathers.style.ITheme`
 **/
+@:event(feathers.events.StyleProviderEvent.STYLES_CHANGE)
 interface IStyleProvider extends IEventDispatcher {
 	/**
 		Applies styles to the target object.

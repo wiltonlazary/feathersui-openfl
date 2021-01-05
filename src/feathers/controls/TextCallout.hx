@@ -8,14 +8,10 @@
 
 package feathers.controls;
 
-import feathers.layout.RelativePositions;
-import feathers.layout.RelativePosition;
-import feathers.themes.steel.components.SteelTextCalloutStyles;
-import openfl.text.TextFormat;
-import openfl.text.TextFieldAutoSize;
-import openfl.text.TextField;
-import feathers.core.InvalidationFlag;
 import feathers.core.ITextControl;
+import feathers.layout.RelativePositions;
+import feathers.text.TextFormat;
+import feathers.themes.steel.components.SteelTextCalloutStyles;
 import openfl.display.DisplayObject;
 
 /**
@@ -38,6 +34,8 @@ import openfl.display.DisplayObject;
 
 	@since 1.0.0
 **/
+@:meta(DefaultProperty("text"))
+@defaultXmlProperty("text")
 @:styleContext
 class TextCallout extends Callout implements ITextControl {
 	/**
@@ -83,6 +81,8 @@ class TextCallout extends Callout implements ITextControl {
 
 	private var label:Label;
 
+	private var _text:String;
+
 	/**
 		The text displayed by the text callout.
 
@@ -97,20 +97,20 @@ class TextCallout extends Callout implements ITextControl {
 
 		@since 1.0.0
 	**/
-	@:isVar
+	@:flash.property
 	public var text(get, set):String;
 
 	private function get_text():String {
-		return this.text;
+		return this._text;
 	}
 
 	private function set_text(value:String):String {
-		if (this.text == value) {
-			return this.text;
+		if (this._text == value) {
+			return this._text;
 		}
-		this.text = value;
-		this.setInvalid(InvalidationFlag.DATA);
-		return this.text;
+		this._text = value;
+		this.setInvalid(DATA);
+		return this._text;
 	}
 
 	/**
@@ -180,9 +180,9 @@ class TextCallout extends Callout implements ITextControl {
 	}
 
 	override private function update():Void {
-		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var dataInvalid = this.isInvalid(DATA);
+		var stateInvalid = this.isInvalid(STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
 
 		if (stylesInvalid || stateInvalid) {
 			this.refreshTextStyles();
@@ -202,6 +202,6 @@ class TextCallout extends Callout implements ITextControl {
 	}
 
 	private function refreshText():Void {
-		this.label.text = this.text;
+		this.label.text = this._text;
 	}
 }

@@ -8,12 +8,14 @@
 
 package feathers.graphics;
 
+import openfl.display.BitmapData;
 import openfl.display.CapsStyle;
 import openfl.display.GradientType;
 import openfl.display.InterpolationMethod;
 import openfl.display.JointStyle;
 import openfl.display.LineScaleMode;
 import openfl.display.SpreadMethod;
+import openfl.geom.Matrix;
 
 /**
 	Line styles for graphics.
@@ -32,12 +34,28 @@ enum LineStyle {
 		?miterLimit:Float);
 
 	/**
+		The line is rendered as a bitmap.
+
+		@see [`openfl.display.Graphics.lineBitmapStyle()`](https://api.openfl.org/openfl/display/Graphics.html#lineBitmapStyle)
+
+		@since 1.0.0
+	**/
+	Bitmap(thickness:Float, bitmapData:BitmapData, ?matrix:Matrix, ?repeat:Bool, ?smooth:Bool);
+
+	/**
 		The line is rendered as a gradient of multiple colors.
 
 		@see [`openfl.display.Graphics.lineGradientStyle()`](https://api.openfl.org/openfl/display/Graphics.html#lineGradientStyle)
 
 		@since 1.0.0
 	**/
-	Gradient(thickness:Float, type:GradientType, colors:Array<Int>, alphas:Array<Float>, ratios:Array<Int>, ?radians:Float, ?spreadMethod:SpreadMethod,
-		?interpolationMethod:InterpolationMethod, ?focalPointRatio:Float);
+	Gradient(thickness:Float, type:GradientType, colors:Array<Int>, alphas:Array<Float>, ratios:Array<Int>, ?matrix:CreateGradientBoxMatrix, ?spreadMethod
+		:SpreadMethod, ?interpolationMethod:InterpolationMethod, ?focalPointRatio:Float);
+
+	/**
+		A line is not drawn.
+
+		@since 1.0.0
+	**/
+	None;
 }

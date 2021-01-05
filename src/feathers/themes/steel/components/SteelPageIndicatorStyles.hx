@@ -38,11 +38,11 @@ class SteelPageIndicatorStyles {
 		if (styleProvider.getStyleFunction(PageIndicator, null) == null) {
 			styleProvider.setStyleFunction(PageIndicator, null, function(pages:PageIndicator):Void {
 				if (pages.focusRectSkin == null) {
-					var skin = new RectangleSkin();
-					skin.fill = null;
-					skin.border = theme.getFocusBorder();
-					skin.cornerRadius = 6.0;
-					pages.focusRectSkin = skin;
+					var focusRectSkin = new RectangleSkin();
+					focusRectSkin.fill = null;
+					focusRectSkin.border = theme.getFocusBorder();
+					focusRectSkin.cornerRadius = 3.0;
+					pages.focusRectSkin = focusRectSkin;
 				}
 				if (pages.layout == null) {
 					var layout = new HorizontalLayout();
@@ -63,12 +63,12 @@ class SteelPageIndicatorStyles {
 				if (button.backgroundSkin == null) {
 					var skin = new CircleSkin();
 					skin.fill = theme.getButtonFill();
+					skin.disabledFill = theme.getButtonDisabledFill();
 					skin.selectedFill = theme.getThemeFill();
 					skin.setFillForState(ToggleButtonState.DOWN(false), theme.getReversedActiveThemeFill());
-					skin.setFillForState(ToggleButtonState.DISABLED(false), theme.getButtonDisabledFill());
 					skin.setFillForState(ToggleButtonState.DOWN(false), theme.getReversedActiveThemeFill());
 					skin.border = theme.getButtonBorder();
-					skin.selectedBorder = theme.getActiveFillBorder();
+					skin.selectedBorder = theme.getSelectedInsetBorder();
 					skin.setBorderForState(ToggleButtonState.DOWN(false), theme.getActiveFillBorder());
 					skin.minWidth = 10.0;
 					skin.minHeight = 10.0;

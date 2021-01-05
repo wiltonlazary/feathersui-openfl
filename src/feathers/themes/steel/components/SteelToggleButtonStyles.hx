@@ -36,23 +36,24 @@ class SteelToggleButtonStyles {
 				if (button.backgroundSkin == null) {
 					var skin = new RectangleSkin();
 					skin.fill = theme.getButtonFill();
+					skin.disabledFill = theme.getButtonDisabledFill();
 					skin.selectedFill = theme.getThemeFill();
-					skin.setFillForState(ToggleButtonState.DOWN(false), theme.getReversedActiveThemeFill());
-					skin.setFillForState(ToggleButtonState.DISABLED(false), theme.getButtonDisabledFill());
-					skin.setFillForState(ToggleButtonState.DOWN(false), theme.getReversedActiveThemeFill());
+					skin.setFillForState(DOWN(false), theme.getReversedActiveThemeFill());
+					skin.setFillForState(DOWN(false), theme.getReversedActiveThemeFill());
 					skin.border = theme.getButtonBorder();
-					skin.selectedBorder = theme.getActiveFillBorder();
-					skin.setBorderForState(ToggleButtonState.DOWN(false), theme.getActiveFillBorder());
-					skin.cornerRadius = 6.0;
+					skin.selectedBorder = theme.getSelectedBorder();
+					skin.setBorderForState(DOWN(false), theme.getActiveFillBorder());
+					skin.setBorderForState(DOWN(true), theme.getActiveFillBorder());
+					skin.cornerRadius = 3.0;
 					button.backgroundSkin = skin;
 				}
 
 				if (button.focusRectSkin == null) {
-					var skin = new RectangleSkin();
-					skin.fill = null;
-					skin.border = theme.getFocusBorder();
-					skin.cornerRadius = 6.0;
-					button.focusRectSkin = skin;
+					var focusRectSkin = new RectangleSkin();
+					focusRectSkin.fill = null;
+					focusRectSkin.border = theme.getFocusBorder();
+					focusRectSkin.cornerRadius = 3.0;
+					button.focusRectSkin = focusRectSkin;
 				}
 
 				if (button.textFormat == null) {
@@ -60,13 +61,6 @@ class SteelToggleButtonStyles {
 				}
 				if (button.disabledTextFormat == null) {
 					button.disabledTextFormat = theme.getDisabledTextFormat();
-				}
-				if (button.selectedTextFormat == null) {
-					button.selectedTextFormat = theme.getActiveTextFormat();
-				}
-
-				if (button.getTextFormatForState(ToggleButtonState.DOWN(false)) == null) {
-					button.setTextFormatForState(ToggleButtonState.DOWN(false), theme.getActiveTextFormat());
 				}
 
 				button.paddingTop = 4.0;

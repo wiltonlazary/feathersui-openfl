@@ -31,30 +31,32 @@ class SteelTreeViewStyles {
 			return;
 		}
 
-		function styleTreeViewWithWithBorderVariant(treeView:TreeView):Void {
+		function styleTreeViewWithBorderVariant(treeView:TreeView):Void {
 			var isDesktop = DeviceUtil.isDesktop();
 
 			treeView.autoHideScrollBars = !isDesktop;
 			treeView.fixedScrollBars = isDesktop;
 
 			if (treeView.layout == null) {
-				treeView.layout = new VerticalListLayout();
+				var layout = new VerticalListLayout();
+				layout.requestedRowCount = 5.0;
+				treeView.layout = layout;
 			}
 
 			if (treeView.backgroundSkin == null) {
 				var backgroundSkin = new RectangleSkin();
 				backgroundSkin.fill = theme.getContainerFill();
 				backgroundSkin.border = theme.getContainerBorder();
-				backgroundSkin.width = 160.0;
-				backgroundSkin.height = 160.0;
+				backgroundSkin.width = 10.0;
+				backgroundSkin.height = 10.0;
 				treeView.backgroundSkin = backgroundSkin;
 			}
 
 			if (treeView.focusRectSkin == null) {
-				var skin = new RectangleSkin();
-				skin.fill = null;
-				skin.border = theme.getFocusBorder();
-				treeView.focusRectSkin = skin;
+				var focusRectSkin = new RectangleSkin();
+				focusRectSkin.fill = null;
+				focusRectSkin.border = theme.getFocusBorder();
+				treeView.focusRectSkin = focusRectSkin;
 			}
 
 			treeView.paddingTop = 1.0;
@@ -63,7 +65,7 @@ class SteelTreeViewStyles {
 			treeView.paddingLeft = 1.0;
 		}
 
-		function styleTreeViewWithWithBorderlessVariant(treeView:TreeView):Void {
+		function styleTreeViewWithBorderlessVariant(treeView:TreeView):Void {
 			var isDesktop = DeviceUtil.isDesktop();
 
 			treeView.autoHideScrollBars = !isDesktop;
@@ -76,8 +78,8 @@ class SteelTreeViewStyles {
 			if (treeView.backgroundSkin == null) {
 				var backgroundSkin = new RectangleSkin();
 				backgroundSkin.fill = theme.getContainerFill();
-				backgroundSkin.width = 160.0;
-				backgroundSkin.height = 160.0;
+				backgroundSkin.width = 10.0;
+				backgroundSkin.height = 10.0;
 				treeView.backgroundSkin = backgroundSkin;
 			}
 
@@ -94,17 +96,17 @@ class SteelTreeViewStyles {
 			styleProvider.setStyleFunction(TreeView, null, function(treeView:TreeView):Void {
 				var isDesktop = DeviceUtil.isDesktop();
 				if (isDesktop) {
-					styleTreeViewWithWithBorderVariant(treeView);
+					styleTreeViewWithBorderVariant(treeView);
 				} else {
-					styleTreeViewWithWithBorderlessVariant(treeView);
+					styleTreeViewWithBorderlessVariant(treeView);
 				}
 			});
 		}
 		if (styleProvider.getStyleFunction(TreeView, TreeView.VARIANT_BORDER) == null) {
-			styleProvider.setStyleFunction(TreeView, TreeView.VARIANT_BORDER, styleTreeViewWithWithBorderVariant);
+			styleProvider.setStyleFunction(TreeView, TreeView.VARIANT_BORDER, styleTreeViewWithBorderVariant);
 		}
 		if (styleProvider.getStyleFunction(TreeView, TreeView.VARIANT_BORDERLESS) == null) {
-			styleProvider.setStyleFunction(TreeView, TreeView.VARIANT_BORDERLESS, styleTreeViewWithWithBorderlessVariant);
+			styleProvider.setStyleFunction(TreeView, TreeView.VARIANT_BORDERLESS, styleTreeViewWithBorderlessVariant);
 		}
 	}
 }

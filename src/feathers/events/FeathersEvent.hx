@@ -8,10 +8,16 @@
 
 package feathers.events;
 
-import openfl._internal.utils.ObjectPool;
 import openfl.events.Event;
 import openfl.events.EventType;
 import openfl.events.IEventDispatcher;
+#if !flash
+#if (openfl >= "9.1.0")
+import openfl.utils.ObjectPool;
+#else
+import openfl._internal.utils.ObjectPool;
+#end
+#end
 
 /**
 	Events dispatched by Feathers UI components.
@@ -98,8 +104,42 @@ class FeathersEvent extends Event {
 	**/
 	public static inline var TRANSITION_CANCEL:EventType<FeathersEvent> = "transitionCancel";
 
+	/**
+		The `FeathersEvent.OPENING` event type is dispatched when a component
+		starts to open.
+
+		@since 1.0.0
+	**/
+	public static inline var OPENING:EventType<FeathersEvent> = "opening";
+
+	/**
+		The `FeathersEvent.OPENING` event type is dispatched when a component
+		starts to close.
+
+		@since 1.0.0
+	**/
+	public static inline var CLOSING:EventType<FeathersEvent> = "closing";
+
+	/**
+		The `FeathersEvent.ENABLE` event type is dispatched when the `enabled`
+		property of a component is set to `true`.
+
+		@since 1.0.0
+	**/
+	public static inline var ENABLE:EventType<FeathersEvent> = "enable";
+
+	/**
+		The `FeathersEvent.DISABLE` event type is dispatched when the `enabled`
+		property of a component is set to `false`.
+
+		@since 1.0.0
+	**/
+	public static inline var DISABLE:EventType<FeathersEvent> = "disable";
+
 	#if !flash
 	private static var _pool = new ObjectPool<FeathersEvent>(() -> return new FeathersEvent(null, false, false), (event) -> {
+		event.target = null;
+		event.currentTarget = null;
 		event.__preventDefault = false;
 		event.__isCanceled = false;
 		event.__isCanceledNow = false;

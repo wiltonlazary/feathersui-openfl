@@ -8,13 +8,14 @@
 
 package feathers.core;
 
-import feathers.style.IStyleObject;
-
 /**
 	A user interface control.
 
 	@since 1.0.0
 **/
+@:event(feathers.events.FeathersEvent.INITIALIZE)
+@:event(feathers.events.FeathersEvent.ENABLE)
+@:event(feathers.events.FeathersEvent.DISABLE)
 interface IUIControl extends IDisplayObject {
 	/**
 		Indicates whether the control should respond when a user attempts to
@@ -29,7 +30,31 @@ interface IUIControl extends IDisplayObject {
 
 		@since 1.0.0
 	**/
+	@:flash.property
 	public var enabled(get, set):Bool;
+
+	/**
+		Text to display in a tool tip to when hovering the mouse over this
+		component, if the `ToolTipManager` is enabled.
+
+		The following example sets a tool tip:
+
+		```hx
+		component.toolTip = "Description of component";
+		```
+
+		Note: This property will be ignored if no tool tip manager is enabled.
+		If you are using the `Application` component, a tool tip manager will
+		be enabled automatically.
+
+		@default null
+
+		@see `feathers.core.ToolTipManager`
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var toolTip(get, set):String;
 
 	/**
 		If the component has not yet initialized, initializes immediately. The

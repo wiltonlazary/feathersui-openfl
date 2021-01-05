@@ -23,5 +23,6 @@ interface IStateContext<T> extends IEventDispatcher {
 
 		@since 1.0.0
 	**/
-	public var currentState(get, never):T;
+	@:flash.property
+	public var currentState(get, never):#if flash Dynamic #else T #end;
 }

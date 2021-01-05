@@ -19,6 +19,8 @@ import feathers.themes.steel.DefaultSteelTheme;
 	@since 1.0.0
 **/
 final class Theme {
+	private static var _fallbackTheme:ITheme;
+
 	/**
 		The fallback theme used when the primary theme does not provide styles
 		for a target object. Generally, this function is only used internally
@@ -26,15 +28,16 @@ final class Theme {
 
 		@since 1.0.0
 	**/
-	public static var fallbackTheme(get, null):ITheme;
+	@:flash.property
+	public static var fallbackTheme(get, never):ITheme;
 
 	private static function get_fallbackTheme():ITheme {
 		#if !disable_default_theme
-		if (fallbackTheme == null) {
-			fallbackTheme = new DefaultSteelTheme();
+		if (_fallbackTheme == null) {
+			_fallbackTheme = new DefaultSteelTheme();
 		}
 		#end
-		return fallbackTheme;
+		return _fallbackTheme;
 	}
 
 	private static var primaryTheme:ITheme;
@@ -77,17 +80,31 @@ final class Theme {
 		@since 1.0.0
 	**/
 	public static function getTheme(?object:IStyleObject):ITheme {
-		if (roots != null && Std.is(object, DisplayObject)) {
-			var displayObject = cast(object, DisplayObject);
-			for (root in roots) {
-				if (root.contains(displayObject)) {
-					return rootToTheme.get(root);
+		if (Std.is(object, DisplayObject)) {
+			var current = cast(object, DisplayObject);
+			while (current != null) {
+				if (Std.is(current, IStyleObject)) {
+					var currentStylable = cast(current, IStyleObject);
+					if (!currentStylable.themeEnabled) {
+						return null;
+					}
+				}
+				current = current.parent;
+			}
+			if (roots != null) {
+				var displayObject = cast(object, DisplayObject);
+				for (root in roots) {
+					if (root.contains(displayObject)) {
+						return rootToTheme.get(root);
+					}
 				}
 			}
+		} else if (object != null && !object.themeEnabled) {
+			return null;
 		}
 		if (primaryTheme != null) {
 			return primaryTheme;
 		}
-		return fallbackTheme;
+		return _fallbackTheme;
 	}
 }

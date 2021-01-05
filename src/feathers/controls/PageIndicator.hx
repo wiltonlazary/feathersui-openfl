@@ -8,32 +8,31 @@
 
 package feathers.controls;
 
-import openfl.ui.Keyboard;
-import openfl.events.KeyboardEvent;
-import feathers.core.IFocusObject;
-import openfl.errors.ArgumentError;
-import feathers.layout.HorizontalLayout;
-import feathers.layout.VerticalLayout;
-import openfl.events.TouchEvent;
-import openfl.events.MouseEvent;
-import feathers.data.PageIndicatorItemState;
-import feathers.utils.DisplayObjectRecycler;
-import openfl.errors.IllegalOperationError;
-import feathers.core.IStateContext;
-import feathers.core.IUIControl;
-import feathers.core.IStateObserver;
-import feathers.core.IValidating;
-import feathers.layout.LayoutBoundsResult;
-import feathers.layout.ILayout;
-import feathers.layout.Measurements;
-import openfl.display.DisplayObject;
-import openfl.events.Event;
-import openfl.errors.RangeError;
-import feathers.events.FeathersEvent;
-import feathers.core.InvalidationFlag;
 import feathers.core.FeathersControl;
+import feathers.core.IFocusObject;
 import feathers.core.IIndexSelector;
+import feathers.core.IUIControl;
+import feathers.core.IValidating;
+import feathers.core.InvalidationFlag;
+import feathers.data.PageIndicatorItemState;
+import feathers.events.FeathersEvent;
+import feathers.layout.HorizontalLayout;
+import feathers.layout.ILayout;
+import feathers.layout.LayoutBoundsResult;
+import feathers.layout.Measurements;
+import feathers.layout.VerticalLayout;
+import feathers.skins.IProgrammaticSkin;
 import feathers.themes.steel.components.SteelPageIndicatorStyles;
+import feathers.utils.DisplayObjectRecycler;
+import openfl.display.DisplayObject;
+import openfl.errors.ArgumentError;
+import openfl.errors.IllegalOperationError;
+import openfl.errors.RangeError;
+import openfl.events.Event;
+import openfl.events.KeyboardEvent;
+import openfl.events.MouseEvent;
+import openfl.events.TouchEvent;
+import openfl.ui.Keyboard;
 #if air
 import openfl.ui.Multitouch;
 #end
@@ -62,15 +61,20 @@ import openfl.ui.Multitouch;
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
 @:access(feathers.data.PageIndicatorItemState)
 @:styleContext
 class PageIndicator extends FeathersControl implements IIndexSelector implements IFocusObject {
-	private static final INVALIDATION_FLAG_TOGGLE_BUTTON_FACTORY = "toggleButtonFactory";
+	private static final INVALIDATION_FLAG_TOGGLE_BUTTON_FACTORY = InvalidationFlag.CUSTOM("toggleButtonFactory");
 
 	/**
 		The variant used to style the toggle button child components in a theme.
 
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@see `PageIndicator.customToggleButtonVariant`
+
+		@since 1.0.0
 	**/
 	public static final CHILD_VARIANT_TOGGLE_BUTTON = "pageIndicator_toggleButton";
 
@@ -84,61 +88,79 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 
 		super();
 
-		this.mouseChildren = this.interactionMode == PRECISE;
+		this.mouseChildren = this._interactionMode == PRECISE;
 		this.addEventListener(MouseEvent.CLICK, pageIndicator_clickHandler);
-		// TODO: temporarily disabled until isPrimaryTouchPoint bug is fixed
-		// See commit: 43d659b6afa822873ded523395e2a2a1a4567a50
-		// this.addEventListener(TouchEvent.TOUCH_TAP, pageIndicator_touchTapHandler);
+		#if (openfl >= "9.0.0")
+		this.addEventListener(TouchEvent.TOUCH_TAP, pageIndicator_touchTapHandler);
+		#end
 		this.addEventListener(KeyboardEvent.KEY_DOWN, pageIndicator_keyDownHandler);
 	}
+
+	private var _selectedIndex:Int = -1;
 
 	/**
 		@see `feathers.core.IIndexSelector.selectedIndex`
 	**/
-	@:isVar
-	public var selectedIndex(get, set):Int = -1;
+	@:flash.property
+	public var selectedIndex(get, set):Int;
 
 	private function get_selectedIndex():Int {
-		return this.selectedIndex;
+		return this._selectedIndex;
 	}
 
 	private function set_selectedIndex(value:Int):Int {
-		if (this.selectedIndex == value) {
-			return this.selectedIndex;
+		if (this._selectedIndex == value) {
+			return this._selectedIndex;
 		}
-		if (value < -1 || value > this.maxSelectedIndex) {
-			throw new RangeError("Index " + value + " is out of range " + this.maxSelectedIndex + " for PageIndicator.");
+		if (value < -1 || value > this._maxSelectedIndex) {
+			throw new RangeError("Index " + value + " is out of range " + this._maxSelectedIndex + " for PageIndicator.");
 		}
 
-		this.selectedIndex = value;
-		this.setInvalid(InvalidationFlag.DATA);
+		this._selectedIndex = value;
+		this.setInvalid(DATA);
 		FeathersEvent.dispatch(this, Event.CHANGE);
-		return this.selectedIndex;
+		return this._selectedIndex;
 	}
+
+	private var _maxSelectedIndex:Int = -1;
 
 	/**
 		@see `feathers.core.IIndexSelector.maxSelectedIndex`
 	**/
-	@:isVar
+	@:flash.property
 	public var maxSelectedIndex(get, set):Int;
 
 	private function get_maxSelectedIndex():Int {
-		return this.maxSelectedIndex;
+		return this._maxSelectedIndex;
 	}
 
 	private function set_maxSelectedIndex(value:Int):Int {
-		if (this.maxSelectedIndex == value) {
-			return this.maxSelectedIndex;
+		if (this._maxSelectedIndex == value) {
+			return this._maxSelectedIndex;
 		}
-		this.maxSelectedIndex = value;
-		this.setInvalid(InvalidationFlag.DATA);
-		if (this.maxSelectedIndex >= 0 && this.selectedIndex < 0) {
+		this._maxSelectedIndex = value;
+		this.setInvalid(DATA);
+		if (this._maxSelectedIndex >= 0 && this._selectedIndex < 0) {
+			// use the setter
 			this.selectedIndex = 0;
-		} else if (this.selectedIndex > this.maxSelectedIndex) {
-			this.selectedIndex = this.maxSelectedIndex;
+		} else if (this.selectedIndex > this._maxSelectedIndex) {
+			// use the setter
+			this.selectedIndex = this._maxSelectedIndex;
 		}
-		return this.maxSelectedIndex;
+		return this._maxSelectedIndex;
 	}
+
+	private var _previousCustomToggleButtonVariant:String = null;
+
+	/**
+		A custom variant to set on all toggle buttons.
+
+		@see `PageIndicator.CHILD_VARIANT_TOGGLE_BUTTON`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var customToggleButtonVariant:String = null;
 
 	/**
 		Manages toggle buttons used by the page indicator.
@@ -221,6 +243,8 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 	@:style
 	public var disabledBackgroundSkin:DisplayObject = null;
 
+	private var _interactionMode:PageIndicatorInteractionMode = PREVIOUS_NEXT;
+
 	/**
 		Determines how the selected index changes when the page indicator is
 		clicked or tapped. If precise, the exact page must be chosen. If
@@ -236,15 +260,20 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 
 		@since 1.0.0
 	**/
-	public var interactionMode(default, set):PageIndicatorInteractionMode = PREVIOUS_NEXT;
+	@:flash.property
+	public var interactionMode(get, set):PageIndicatorInteractionMode;
+
+	private function get_interactionMode():PageIndicatorInteractionMode {
+		return this._interactionMode;
+	}
 
 	private function set_interactionMode(value:PageIndicatorInteractionMode):PageIndicatorInteractionMode {
-		if (this.interactionMode == value) {
-			return this.interactionMode;
+		if (this._interactionMode == value) {
+			return this._interactionMode;
 		}
-		this.interactionMode = value;
-		this.mouseChildren = this.interactionMode == PRECISE;
-		return this.interactionMode;
+		this._interactionMode = value;
+		this.mouseChildren = this._interactionMode == PRECISE;
+		return this._interactionMode;
 	}
 
 	private var _layoutMeasurements = new Measurements();
@@ -258,12 +287,15 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 	}
 
 	override private function update():Void {
-		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var layoutInvalid = this.isInvalid(InvalidationFlag.LAYOUT);
-		var selectionInvalid = this.isInvalid(InvalidationFlag.SELECTION);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var dataInvalid = this.isInvalid(DATA);
+		var dataInvalid = this.isInvalid(DATA);
+		var layoutInvalid = this.isInvalid(LAYOUT);
+		var selectionInvalid = this.isInvalid(SELECTION);
+		var stateInvalid = this.isInvalid(STATE);
+		var stylesInvalid = this.isInvalid(STYLES);
+		if (this._previousCustomToggleButtonVariant != this.customToggleButtonVariant) {
+			this.setInvalidationFlag(INVALIDATION_FLAG_TOGGLE_BUTTON_FACTORY);
+		}
 		var buttonsInvalid = this.isInvalid(INVALIDATION_FLAG_TOGGLE_BUTTON_FACTORY);
 
 		if (stylesInvalid || stateInvalid) {
@@ -282,6 +314,8 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 
 		// final invalidation to avoid juggler next frame issues
 		this.validateChildren();
+
+		this._previousCustomToggleButtonVariant = this.customToggleButtonVariant;
 	}
 
 	private function refreshViewPortBounds():Void {
@@ -315,7 +349,7 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		this.refreshInactiveToggleButtons(buttonsInvalid);
 
 		this.recoverInactiveToggleButtons();
-		for (i in 0...this.maxSelectedIndex + 1) {
+		for (i in 0...this._maxSelectedIndex + 1) {
 			this.createToggleButton(i);
 		}
 		this.freeInactiveToggleButtons();
@@ -343,14 +377,17 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 				continue;
 			}
 			button.removeEventListener(Event.CHANGE, pageIndicator_toggleButton_changeHandler);
+			this._currentItemState.owner = this;
 			this._currentItemState.index = -1;
 			this._currentItemState.selected = false;
+			this._currentItemState.enabled = true;
 			var oldIgnoreSelectionChange = this._ignoreSelectionChange;
 			this._ignoreSelectionChange = true;
 			if (this.toggleButtonRecycler.reset != null) {
 				this.toggleButtonRecycler.reset(button, this._currentItemState);
 			}
 			button.selected = this._currentItemState.selected;
+			button.enabled = this._currentItemState.enabled;
 			this._ignoreSelectionChange = oldIgnoreSelectionChange;
 		}
 	}
@@ -384,14 +421,14 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		} else {
 			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
 		}
-		if (Std.is(this, IStateContext) && Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = cast(this, IStateContext<Dynamic>);
+		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
+			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
 		}
 		this.addChildAt(this._currentBackgroundSkin, 0);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		if (!this.enabled && this.disabledBackgroundSkin != null) {
+		if (!this._enabled && this.disabledBackgroundSkin != null) {
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
@@ -401,13 +438,13 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		if (skin == null) {
 			return;
 		}
-		if (Std.is(skin, IStateObserver)) {
-			cast(skin, IStateObserver).stateContext = null;
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = null;
 		}
+		// we need to restore these values so that they won't be lost the
+		// next time that this skin is used for measurement
 		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
-			// we need to restore these values so that they won't be lost the
-			// next time that this skin is used for measurement
 			this.removeChild(skin);
 		}
 	}
@@ -442,24 +479,17 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		var button:ToggleButton = null;
 		if (this.inactiveToggleButtons.length == 0) {
 			button = this.toggleButtonRecycler.create();
+			if (button.variant == null) {
+				// if the factory set a variant already, don't use the default
+				var variant = this.customToggleButtonVariant != null ? this.customToggleButtonVariant : PageIndicator.CHILD_VARIANT_TOGGLE_BUTTON;
+				button.variant = variant;
+			}
 			this.addChildAt(button, index + depthOffset);
 		} else {
 			button = this.inactiveToggleButtons.shift();
 			this.setChildIndex(button, index + depthOffset);
 		}
-		if (button.variant == null) {
-			// if the factory set a variant already, don't use the default
-			button.variant = PageIndicator.CHILD_VARIANT_TOGGLE_BUTTON;
-		}
-		this._currentItemState.index = index;
-		this._currentItemState.selected = index == this.selectedIndex;
-		var oldIgnoreSelectionChange = this._ignoreSelectionChange;
-		this._ignoreSelectionChange = true;
-		if (this.toggleButtonRecycler.update != null) {
-			this.toggleButtonRecycler.update(button, this._currentItemState);
-		}
-		button.selected = this._currentItemState.selected;
-		this._ignoreSelectionChange = oldIgnoreSelectionChange;
+		this.refreshToggleButtonProperties(button, index);
 		button.addEventListener(Event.CHANGE, pageIndicator_toggleButton_changeHandler);
 		this.activeToggleButtons.push(button);
 		return button;
@@ -472,8 +502,27 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		}
 	}
 
+	private function populateCurrentItemState(index:Int):Void {
+		this._currentItemState.owner = this;
+		this._currentItemState.index = index;
+		this._currentItemState.selected = index == this._selectedIndex;
+		this._currentItemState.enabled = this._enabled;
+	}
+
+	private function refreshToggleButtonProperties(button:ToggleButton, index:Int):Void {
+		this.populateCurrentItemState(index);
+		var oldIgnoreSelectionChange = this._ignoreSelectionChange;
+		this._ignoreSelectionChange = true;
+		if (this.toggleButtonRecycler.update != null) {
+			this.toggleButtonRecycler.update(button, this._currentItemState);
+		}
+		button.selected = this._currentItemState.selected;
+		button.enabled = this._currentItemState.enabled;
+		this._ignoreSelectionChange = oldIgnoreSelectionChange;
+	}
+
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
-		var result = this.selectedIndex;
+		var result = this._selectedIndex;
 		switch (event.keyCode) {
 			case Keyboard.UP:
 				result = result - 1;
@@ -490,22 +539,23 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 			case Keyboard.HOME:
 				result = 0;
 			case Keyboard.END:
-				result = this.maxSelectedIndex;
+				result = this._maxSelectedIndex;
 			default:
 				// not keyboard navigation
 				return;
 		}
 		if (result < 0) {
 			result = 0;
-		} else if (result > this.maxSelectedIndex) {
-			result = this.maxSelectedIndex;
+		} else if (result > this._maxSelectedIndex) {
+			result = this._maxSelectedIndex;
 		}
 		event.stopPropagation();
+		// use the setter
 		this.selectedIndex = result;
 	}
 
 	private function pageIndicator_keyDownHandler(event:KeyboardEvent):Void {
-		if (!this.enabled) {
+		if (!this._enabled) {
 			return;
 		}
 		this.navigateWithKeyboard(event);
@@ -521,11 +571,12 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 			button.selected = true;
 			return;
 		}
+		// use the setter
 		this.selectedIndex = this.activeToggleButtons.indexOf(button);
 	}
 
 	private function handleClickOrTap(localX:Float, localY:Float):Void {
-		var selectedIndex = this.selectedIndex;
+		var selectedIndex = this._selectedIndex;
 		if (selectedIndex != -1) {
 			var button = this.activeToggleButtons[selectedIndex];
 			if (Std.is(this.layout, VerticalLayout)) {
@@ -544,21 +595,22 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		}
 		if (selectedIndex < 0) {
 			selectedIndex = 0;
-		} else if (selectedIndex > this.maxSelectedIndex) {
-			selectedIndex = this.maxSelectedIndex;
+		} else if (selectedIndex > this._maxSelectedIndex) {
+			selectedIndex = this._maxSelectedIndex;
 		}
+		// use the setter
 		this.selectedIndex = selectedIndex;
 	}
 
 	private function pageIndicator_clickHandler(event:MouseEvent):Void {
-		if (!this.enabled || this.interactionMode != PREVIOUS_NEXT) {
+		if (!this._enabled || this._interactionMode != PREVIOUS_NEXT) {
 			return;
 		}
 		this.handleClickOrTap(event.localX, event.localY);
 	}
 
 	private function pageIndicator_touchTapHandler(event:TouchEvent):Void {
-		if (!this.enabled || this.interactionMode != PREVIOUS_NEXT) {
+		if (!this._enabled || this._interactionMode != PREVIOUS_NEXT) {
 			return;
 		}
 		if (event.isPrimaryTouchPoint #if air && Multitouch.mapTouchToMouse #end) {

@@ -1,6 +1,12 @@
 name: Samples
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
 
@@ -10,13 +16,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: haxeui/haxeui-core/.github/actions/haxe@master
+    - uses: krdlab/setup-haxe@v1
       with:
         haxe-version: 4.0.5
     - name: Set up Haxelib dependencies
       run: |
-        haxelib install lime --quiet
-        haxelib install openfl --quiet
+        haxelib install lime 7.8.0 --quiet
+        haxelib install openfl 8.9.7 --quiet
         haxelib install actuate --quiet
         haxelib install hxcpp --quiet
         haxelib dev feathersui $GITHUB_WORKSPACE
@@ -42,6 +48,27 @@ jobs:
         haxelib run openfl build flash
         haxelib run openfl build hl
         haxelib run openfl build linux
+    - name: Build samples/animated-tween-skin
+      working-directory: samples/animated-tween-skin
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+        haxelib run openfl build hl
+    - name: Build samples/custom-programmatic-skin
+      working-directory: samples/custom-programmatic-skin
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+        haxelib run openfl build hl
+    - name: Build samples/custom-programmatic-skin-with-states
+      working-directory: samples/custom-programmatic-skin-with-states
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+        haxelib run openfl build hl
     - name: Build samples/custom-theme
       working-directory: samples/custom-theme
       run: |
@@ -91,13 +118,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: haxeui/haxeui-core/.github/actions/haxe@master
+    - uses: krdlab/setup-haxe@v1
       with:
         haxe-version: 4.0.5
     - name: Set up Haxelib dependencies
       run: |
-        haxelib install lime --quiet
-        haxelib install openfl --quiet
+        haxelib install lime 7.8.0 --quiet
+        haxelib install openfl 8.9.7 --quiet
         haxelib install actuate --quiet
         haxelib install hxcpp --quiet
         haxelib dev feathersui $GITHUB_WORKSPACE
@@ -113,13 +140,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: joshtynjala/setup-adobe-air-action@v1
-    - uses: haxeui/haxeui-core/.github/actions/haxe@master
+    - uses: krdlab/setup-haxe@v1
       with:
         haxe-version: 4.0.5
     - name: Set up Haxelib dependencies
       run: |
-        haxelib install lime --quiet
-        haxelib install openfl --quiet
+        haxelib install lime 7.8.0 --quiet
+        haxelib install openfl 8.9.7 --quiet
         haxelib install actuate --quiet
         haxelib install hxcpp --quiet
         haxelib dev feathersui $GITHUB_WORKSPACE

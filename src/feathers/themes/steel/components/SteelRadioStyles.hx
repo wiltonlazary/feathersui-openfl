@@ -8,6 +8,7 @@
 
 package feathers.themes.steel.components;
 
+import feathers.skins.MultiSkin;
 import feathers.controls.Radio;
 import feathers.controls.ToggleButtonState;
 import feathers.skins.CircleSkin;
@@ -42,59 +43,75 @@ class SteelRadioStyles {
 					radio.disabledTextFormat = theme.getDisabledTextFormat();
 				}
 
-				var icon = new CircleSkin();
-				icon.width = 24.0;
-				icon.height = 24.0;
-				icon.minWidth = 24.0;
-				icon.minHeight = 24.0;
-				icon.border = theme.getInsetBorder(2.0);
-				icon.setBorderForState(ToggleButtonState.DOWN(false), theme.getThemeBorder(2.0));
-				icon.fill = theme.getInsetFill();
-				icon.disabledFill = theme.getDisabledInsetFill();
-				radio.icon = icon;
-
-				var selectedIcon = new CircleSkin();
-				selectedIcon.width = 24.0;
-				selectedIcon.height = 24.0;
-				selectedIcon.minWidth = 24.0;
-				selectedIcon.minHeight = 24.0;
-				selectedIcon.border = theme.getInsetBorder(2.0);
-				selectedIcon.setBorderForState(ToggleButtonState.DOWN(true), theme.getThemeBorder(2.0));
-				selectedIcon.fill = theme.getInsetFill();
-				selectedIcon.disabledFill = theme.getDisabledInsetFill();
-
-				var symbol = new Shape();
-				symbol.graphics.beginFill(theme.themeColor);
-				symbol.graphics.drawCircle(12.0, 12.0, 6.0);
-				symbol.graphics.endFill();
-				selectedIcon.addChild(symbol);
-
-				radio.selectedIcon = selectedIcon;
-
-				var disabledAndSelectedIcon = new CircleSkin();
-				disabledAndSelectedIcon.width = 24.0;
-				disabledAndSelectedIcon.height = 24.0;
-				disabledAndSelectedIcon.minWidth = 24.0;
-				disabledAndSelectedIcon.minHeight = 24.0;
-				disabledAndSelectedIcon.border = theme.getInsetBorder(2.0);
-				disabledAndSelectedIcon.fill = theme.getDisabledInsetFill();
-
-				var disabledSymbol = new Shape();
-				disabledSymbol.graphics.beginFill(theme.disabledTextColor);
-				disabledSymbol.graphics.drawCircle(12.0, 12.0, 6.0);
-				disabledSymbol.graphics.endFill();
-				disabledAndSelectedIcon.addChild(disabledSymbol);
-
-				radio.setIconForState(ToggleButtonState.DISABLED(true), disabledAndSelectedIcon);
-
-				if (radio.focusRectSkin == null) {
-					var skin = new RectangleSkin();
-					skin.fill = null;
-					skin.border = theme.getFocusBorder();
-					skin.cornerRadius = 6.0;
-					radio.focusRectSkin = skin;
+				if (radio.backgroundSkin == null) {
+					var backgroundSkin = new RectangleSkin();
+					backgroundSkin.fill = SolidColor(0x000000, 0.0);
+					backgroundSkin.border = null;
+					radio.backgroundSkin = backgroundSkin;
 				}
 
+				if (radio.icon == null) {
+					var icon = new MultiSkin();
+					radio.icon = icon;
+
+					var defaultIcon = new CircleSkin();
+					defaultIcon.width = 20.0;
+					defaultIcon.height = 20.0;
+					defaultIcon.minWidth = 20.0;
+					defaultIcon.minHeight = 20.0;
+					defaultIcon.border = theme.getInsetBorder();
+					defaultIcon.disabledBorder = theme.getDisabledInsetBorder();
+					defaultIcon.setBorderForState(DOWN(false), theme.getSelectedInsetBorder());
+					defaultIcon.fill = theme.getInsetFill();
+					defaultIcon.disabledFill = theme.getDisabledInsetFill();
+					icon.defaultView = defaultIcon;
+
+					var selectedIcon = new CircleSkin();
+					selectedIcon.width = 20.0;
+					selectedIcon.height = 20.0;
+					selectedIcon.minWidth = 20.0;
+					selectedIcon.minHeight = 20.0;
+					selectedIcon.border = theme.getSelectedInsetBorder();
+					selectedIcon.disabledBorder = theme.getDisabledInsetBorder();
+					selectedIcon.setBorderForState(DOWN(true), theme.getSelectedInsetBorder());
+					selectedIcon.fill = theme.getReversedActiveThemeFill();
+					selectedIcon.disabledFill = theme.getDisabledInsetFill();
+					var symbol = new Shape();
+					symbol.graphics.beginFill(theme.textColor);
+					symbol.graphics.drawCircle(10.0, 10.0, 4.0);
+					symbol.graphics.endFill();
+					selectedIcon.addChild(symbol);
+					icon.selectedView = selectedIcon;
+
+					var disabledAndSelectedIcon = new CircleSkin();
+					disabledAndSelectedIcon.width = 20.0;
+					disabledAndSelectedIcon.height = 20.0;
+					disabledAndSelectedIcon.minWidth = 20.0;
+					disabledAndSelectedIcon.minHeight = 20.0;
+					disabledAndSelectedIcon.border = theme.getDisabledInsetBorder(2.0);
+					disabledAndSelectedIcon.fill = theme.getDisabledInsetFill();
+					var disabledSymbol = new Shape();
+					disabledSymbol.graphics.beginFill(theme.disabledTextColor);
+					disabledSymbol.graphics.drawCircle(10.0, 10.0, 4.0);
+					disabledSymbol.graphics.endFill();
+					disabledAndSelectedIcon.addChild(disabledSymbol);
+					icon.setViewForState(DISABLED(true), disabledAndSelectedIcon);
+				}
+
+				if (radio.focusRectSkin == null) {
+					var focusRectSkin = new RectangleSkin();
+					focusRectSkin.fill = null;
+					focusRectSkin.border = theme.getFocusBorder();
+					focusRectSkin.cornerRadius = 3.0;
+					radio.focusRectSkin = focusRectSkin;
+
+					radio.focusPaddingTop = 3.0;
+					radio.focusPaddingRight = 3.0;
+					radio.focusPaddingBottom = 3.0;
+					radio.focusPaddingLeft = 3.0;
+				}
+
+				radio.horizontalAlign = LEFT;
 				radio.gap = 4.0;
 			});
 		}
