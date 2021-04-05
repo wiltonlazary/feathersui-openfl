@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -43,7 +43,7 @@ enum HorizontalAlign {
 	RIGHT;
 
 	/**
-		The items in the layout will fill the width of the bounds.
+		The items in the layout will fill the width of the container bounds.
 
 		@since 1.0.0
 	**/

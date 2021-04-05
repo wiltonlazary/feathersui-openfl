@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -15,6 +15,7 @@ import feathers.controls.supportClasses.AdvancedLayoutViewPort;
 import feathers.controls.supportClasses.BaseScrollContainer;
 import feathers.core.IDataSelector;
 import feathers.core.IIndexSelector;
+import feathers.core.InvalidationFlag;
 import feathers.core.ITextControl;
 import feathers.core.IUIControl;
 import feathers.data.ArrayCollection;
@@ -37,6 +38,7 @@ import feathers.themes.steel.components.SteelGridViewStyles;
 import feathers.utils.DisplayObjectRecycler;
 import feathers.utils.DisplayUtil;
 import feathers.utils.ExclusivePointer;
+import feathers.utils.MathUtil;
 import haxe.ds.ObjectMap;
 import openfl.display.DisplayObject;
 import openfl.display.DisplayObjectContainer;
@@ -47,6 +49,7 @@ import openfl.events.Event;
 import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
 import openfl.events.TouchEvent;
+import openfl.geom.Rectangle;
 import openfl.ui.Keyboard;
 import openfl.ui.Mouse;
 import openfl.ui.MouseCursor;
@@ -89,11 +92,26 @@ import openfl.ui.Multitouch;
 	this.addChild(gridView);
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when either
+	`GridView.selectedItem` or `GridView.selectedIndex` changes.
+
+	@event feathers.events.GridViewEvent.CELL_TRIGGER Dispatched when the user
+	taps or clicks a cell renderer in the grid view. The pointer must remain
+	within the bounds of the cell renderer on release, and the grid view cannot
+	scroll before release, or the gesture will be ignored.
+
+	@event feathers.events.GridViewEvent.HEADER_TRIGGER Dispatched when the user
+	taps or clicks a header renderer in the grid view. The pointer must remain
+	within the bounds of the header renderer on release, and the grid view cannot
+	scroll before release, or the gesture will be ignored.
+
 	@see [Tutorial: How to use the GridView component](https://feathersui.com/learn/haxe-openfl/grid-view/)
 
 	@since 1.0.0
 **/
 @:event(openfl.events.Event.CHANGE)
+@:event(feathers.events.GridViewEvent.CELL_TRIGGER)
+@:event(feathers.events.GridViewEvent.HEADER_TRIGGER)
 @:access(feathers.data.GridViewHeaderState)
 @:meta(DefaultProperty("dataProvider"))
 @defaultXmlProperty("dataProvider")
@@ -163,10 +181,12 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?dataProvider:IFlatCollection<Dynamic>) {
 		initializeGridViewTheme();
 
 		super();
+
+		this.dataProvider = dataProvider;
 
 		this.tabEnabled = true;
 		this.focusRect = null;
@@ -187,6 +207,10 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 	private var _resizingHeaderStartStageX:Float;
 	private var _customColumnWidths:Array<Float>;
 
+	private var _currentHeaderScrollRect:Rectangle;
+	private var _headerScrollRect1:Rectangle = new Rectangle();
+	private var _headerScrollRect2:Rectangle = new Rectangle();
+
 	private var _oldHeaderDividerMouseCursor:MouseCursor;
 
 	override private function get_focusEnabled():Bool {
@@ -197,10 +221,18 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 
 	private var gridViewPort:AdvancedLayoutViewPort;
 
-	private var _dataProvider:IFlatCollection<Dynamic> = null;
+	private var _dataProvider:IFlatCollection<Dynamic>;
 
 	/**
 		The collection of data displayed by the grid view.
+
+		Items in the collection must be class instances or anonymous structures.
+		Do not add primitive values (such as strings, booleans, or numeric
+		values) directly to the collection.
+
+		Additionally, all items in the collection must be unique object
+		instances. Do not add the same instance to the collection more than
+		once because a runtime exception will be thrown.
 
 		The following example passes in a data provider and tells the columns
 		how to interpret the data:
@@ -957,9 +989,11 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 			switch (this.scrollBarYPosition) {
 				case LEFT:
 					this._headerContainerLayout.paddingLeft = this.leftViewPortOffset;
+					this._headerContainerLayout.paddingRight = 0.0;
 				default:
+					this._headerContainerLayout.paddingLeft = 0.0;
 					this._headerContainerLayout.paddingRight = this.rightViewPortOffset;
-			};
+			}
 			this._ignoreHeaderLayoutChanges = oldIgnoreHeaderLayoutChanges;
 			// restore these values because we're going to calculate them again
 			// this is kind of hacky, but our change to topViewPortOffset
@@ -977,6 +1011,18 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 			// call again after measuring the headers because they are affected
 			// by the topViewPortOffset that we changed above
 			super.calculateViewPortOffsets(forceScrollBars, useActualBounds);
+
+			var oldIgnoreHeaderLayoutChanges = this._ignoreHeaderLayoutChanges;
+			this._ignoreHeaderLayoutChanges = true;
+			switch (this.scrollBarYPosition) {
+				case LEFT:
+					this._headerContainerLayout.paddingLeft = this.leftViewPortOffset;
+					this._headerContainerLayout.paddingRight = 0.0;
+				default:
+					this._headerContainerLayout.paddingLeft = 0.0;
+					this._headerContainerLayout.paddingRight = this.rightViewPortOffset;
+			}
+			this._ignoreHeaderLayoutChanges = oldIgnoreHeaderLayoutChanges;
 		}
 	}
 
@@ -1006,8 +1052,35 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 
 		this._headerContainer.x = this.paddingLeft;
 		this._headerContainer.y = this.paddingTop;
-		this._headerContainer.width = this.actualWidth - this.paddingLeft - this.paddingRight;
+		var minHeaderWidth = this.actualWidth - this.paddingLeft - this.paddingRight;
+		// same width as the viewPort so that the columns line up
+		this._headerContainer.width = Math.max(this._viewPort.width + this._headerContainerLayout.paddingLeft + this._headerContainerLayout.paddingRight,
+			minHeaderWidth);
 		this._headerContainer.validateNow();
+
+		if (!MathUtil.fuzzyEquals(this.maxScrollX, this.minScrollX)) {
+			// instead of creating a new Rectangle every time, we're going to swap
+			// between two of them to avoid excessive garbage collection
+			var scrollRect = this._scrollRect1;
+			if (this._currentScrollRect == scrollRect) {
+				scrollRect = this._scrollRect2;
+			}
+			this._currentScrollRect = scrollRect;
+
+			// no larger than the full width
+			var scrollRectWidth = minHeaderWidth;
+			if (scrollRectWidth < 0.0) {
+				scrollRectWidth = 0.0;
+			}
+			var scrollRectHeight = this._headerContainer.height;
+			if (scrollRectHeight < 0.0) {
+				scrollRectHeight = 0.0;
+			}
+			scrollRect.setTo(this.scrollX - this.minScrollX, 0.0, scrollRectWidth, scrollRectHeight);
+			this._headerContainer.scrollRect = scrollRect;
+		} else {
+			this._headerContainer.scrollRect = null;
+		}
 
 		this._headerResizeContainer.x = this._headerContainer.x;
 		this._headerResizeContainer.y = this._headerContainer.y;
@@ -1274,6 +1347,9 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 			if (this._rowRendererMeasurements == null) {
 				this._rowRendererMeasurements = new Measurements(rowRenderer);
 			}
+			// for consistency, initialize before passing to the recycler's
+			// update function
+			rowRenderer.initializeNow();
 		} else {
 			rowRenderer = this.inactiveRowRenderers.shift();
 		}
@@ -1311,13 +1387,20 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 		var headerRenderer:DisplayObject = null;
 		headerRenderer = this._headerRendererRecycler.create();
 		/*if (this.inactiveHeaderRenderers.length == 0) {
-				rowRenderer = this._headerRendererRecycler.create();
+				headerRenderer = this._headerRendererRecycler.create();
 			} else {
-				rowRenderer = this.inactiveHeaderRenderers.shift();
+				headerRenderer = this.inactiveHeaderRenderers.shift();
 		}*/
 		var variantHeaderRenderer = cast(headerRenderer, IVariantStyleObject);
 		if (variantHeaderRenderer.variant == null) {
 			variantHeaderRenderer.variant = GridView.CHILD_VARIANT_HEADER;
+		}
+		// for consistency, initialize before passing to the recycler's
+		// update function. plus, this ensures that custom header renderers
+		// correctly handle property changes in update() instead of trying
+		// to access them too early in initialize().
+		if (Std.is(headerRenderer, IUIControl)) {
+			cast(headerRenderer, IUIControl).initializeNow();
 		}
 		this.refreshHeaderRendererProperties(headerRenderer, column, columnIndex);
 		if (Std.is(headerRenderer, ITriggerView)) {
@@ -1380,6 +1463,9 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 	}
 
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
+		if (event.isDefaultPrevented()) {
+			return;
+		}
 		if (this._dataProvider == null || this._dataProvider.length == 0) {
 			return;
 		}
@@ -1410,7 +1496,7 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 		} else if (result >= this._dataProvider.length) {
 			result = this._dataProvider.length - 1;
 		}
-		event.stopPropagation();
+		event.preventDefault();
 		// use the setter
 		this.selectedIndex = result;
 		if (this._selectedIndex != -1) {
@@ -1528,6 +1614,10 @@ class GridView extends BaseScrollContainer implements IIndexSelector implements 
 	}
 
 	override private function baseScrollContainer_keyDownHandler(event:KeyboardEvent):Void {
+		if (!this._selectable) {
+			super.baseScrollContainer_keyDownHandler(event);
+			return;
+		}
 		if (!this._enabled || event.isDefaultPrevented()) {
 			return;
 		}

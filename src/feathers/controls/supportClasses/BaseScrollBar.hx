@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -25,6 +25,13 @@ import openfl.geom.Point;
 /**
 	Base class for scroll bar components.
 
+	@event openfl.events.Event.CHANGE Dispatched when `BaseScrollBar.value`
+	changes.
+
+	@event feathers.events.ScrollEvent.SCROLL_START
+
+	@event feathers.events.ScrollEvent.SCROLL_COMPLETE
+
 	@see `feathers.controls.HScrollBar`
 	@see `feathers.controls.VScrollBar`
 
@@ -40,6 +47,8 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 		this.tabChildren = false;
 		this.focusRect = null;
 	}
+
+	private var _isDefaultValue = true;
 
 	private var _value:Float = 0.0;
 
@@ -76,17 +85,14 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 	}
 
 	private function set_value(value:Float):Float {
-		if (this._snapInterval != 0.0 && value != this._minimum && value != this._maximum) {
-			value = MathUtil.roundToNearest(value, this._snapInterval);
-		}
-		if (value < this._minimum) {
-			value = this._minimum;
-		} else if (value > this._maximum) {
-			value = this._maximum;
-		}
+		// don't restrict a value that has been passed in from an external
+		// source to the minimum/maximum/snapInterval
+		// assume that the user knows what they are doing
+		// this allows the thumb to shrink when outside the minimum or maximum
 		if (this._value == value) {
 			return this._value;
 		}
+		this._isDefaultValue = false;
 		this._value = value;
 		this.setInvalid(DATA);
 		if (this.liveDragging || !this._dragging) {
@@ -128,10 +134,6 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 			return this._minimum;
 		}
 		this._minimum = value;
-		if (this.initialized && this._value < this._minimum) {
-			// use the setter
-			this.value = this._minimum;
-		}
 		this.setInvalid(DATA);
 		return this._minimum;
 	}
@@ -169,10 +171,6 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 			return this._maximum;
 		}
 		this._maximum = value;
-		if (this.initialized && this._value > this._maximum) {
-			// use the setter
-			this.value = this._maximum;
-		}
 		this.setInvalid(DATA);
 		return this._maximum;
 	}
@@ -489,6 +487,9 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 	@:style
 	public var paddingLeft:Float = 0.0;
 
+	@:style
+	public var hideThumbWhenDisabled:Bool = false;
+
 	private var _dragging:Bool = false;
 	private var _pointerStartX:Float = 0.0;
 	private var _pointerStartY:Float = 0.0;
@@ -498,14 +499,46 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 	private var _previousFallbackTrackWidth:Float = 0.0;
 	private var _previousFallbackTrackHeight:Float = 0.0;
 
+	/**
+		Sets all four padding properties to the same value.
+
+		@see `BaseScrollBar.paddingTop`
+		@see `BaseScrollBar.paddingRight`
+		@see `BaseScrollBar.paddingBottom`
+		@see `BaseScrollBar.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
+	/**
+		Applies the `minimum`, `maximum`, and `snapInterval` restrictions to the
+		current `value`.
+
+		Because it's possible to set `value` to a numeric value that is outside
+		the allowed range, or to a value that has not been snapped to the
+		interval, this method may be called to apply the restrictions manually.
+
+		@since 1.0.0
+	**/
+	public function applyValueRestrictions():Void {
+		this.value = this.restrictValue(this._value);
+	}
+
 	override private function initialize():Void {
 		super.initialize();
-		if (this._value < this._minimum) {
+		// if the user hasn't changed the value, automatically restrict it based
+		// on things like minimum, maximum, and snapInterval
+		// if the user has changed the value, assume that they know what they're
+		// doing and don't want hand holding
+		if (this._isDefaultValue) {
 			// use the setter
-			this.value = this._minimum;
-		} else if (this._value > this._maximum) {
-			// use the setter
-			this.value = this._maximum;
+			this.value = this.restrictValue(this._value);
 		}
 	}
 
@@ -520,7 +553,7 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 			this.refreshSecondaryTrack();
 		}
 
-		if (stateInvalid) {
+		if (stateInvalid || stylesInvalid) {
 			this.refreshEnabled();
 		}
 
@@ -635,16 +668,16 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 	}
 
 	private function refreshEnabled():Void {
-		if (Std.is(this.thumbSkin, IUIControl)) {
-			cast(this.thumbSkin, IUIControl).enabled = this._enabled;
+		if (Std.is(this._currentThumbSkin, IUIControl)) {
+			cast(this._currentThumbSkin, IUIControl).enabled = this._enabled;
 		}
 	}
 
 	private function layoutContent():Void {
-		if (this.trackSkin != null && this.secondaryTrackSkin != null) {
+		if (this._currentTrackSkin != null && this._currentSecondaryTrackSkin != null) {
 			this.graphics.clear();
 			this.layoutSplitTrack();
-		} else if (this.trackSkin != null) {
+		} else if (this._currentTrackSkin != null) {
 			this.graphics.clear();
 			this.layoutSingleTrack();
 		} else {
@@ -678,10 +711,10 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 		this._previousFallbackTrackHeight = this.actualHeight;
 	}
 
-	private function normalizeValue():Float {
+	private function normalizeValue(value:Float):Float {
 		var normalized = 0.0;
 		if (this._minimum != this._maximum) {
-			normalized = (this._value - this._minimum) / (this._maximum - this._minimum);
+			normalized = (value - this._minimum) / (this._maximum - this._minimum);
 			if (normalized < 0.0) {
 				normalized = 0.0;
 			} else if (normalized > 1.0) {
@@ -689,6 +722,18 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 			}
 		}
 		return normalized;
+	}
+
+	private function restrictValue(value:Float):Float {
+		if (this._snapInterval != 0.0 && value != this._minimum && value != this._maximum) {
+			value = MathUtil.roundToNearest(value, this._snapInterval);
+		}
+		if (value < this._minimum) {
+			value = this._minimum;
+		} else if (value > this._maximum) {
+			value = this._maximum;
+		}
+		return value;
 	}
 
 	private function valueToLocation(value:Float):Float {
@@ -699,7 +744,7 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 		throw new TypeError("Missing override for 'locationToValue' in type " + Type.getClassName(Type.getClass(this)));
 	}
 
-	private function saveThumbStart(location:Point):Void {
+	private function saveThumbStart(x:Float, y:Float):Void {
 		throw new TypeError("Missing override for 'saveThumbStart' in type " + Type.getClassName(Type.getClass(this)));
 	}
 
@@ -728,22 +773,21 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, thumbSkin_stage_mouseMoveHandler, false, 0, true);
 		this.stage.addEventListener(MouseEvent.MOUSE_UP, thumbSkin_stage_mouseUpHandler, false, 0, true);
 
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
-
-		this._thumbStartX = this.thumbSkin.x;
-		this._thumbStartY = this.thumbSkin.y;
-		this._pointerStartX = location.x;
-		this._pointerStartY = location.y;
+		this._thumbStartX = this._currentThumbSkin.x;
+		this._thumbStartY = this._currentThumbSkin.y;
+		// use mouseX/Y here instead of the values from the event because the
+		// event values seem to be inaccurate and jumpy
+		this._pointerStartX = this.mouseX;
+		this._pointerStartY = this.mouseY;
 		this._dragging = true;
 		ScrollEvent.dispatch(this, ScrollEvent.SCROLL_START);
 	}
 
 	private function thumbSkin_stage_mouseMoveHandler(event:MouseEvent):Void {
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
+		var newValue = this.locationToValue(this.mouseX, this.mouseY);
+		newValue = this.restrictValue(newValue);
 		// use the setter
-		this.value = this.locationToValue(location.x, location.y);
+		this.value = newValue;
 	}
 
 	private function thumbSkin_stage_mouseUpHandler(event:MouseEvent):Void {
@@ -770,25 +814,23 @@ class BaseScrollBar extends FeathersControl implements IScrollBar {
 		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, trackSkin_stage_mouseMoveHandler, false, 0, true);
 		this.stage.addEventListener(MouseEvent.MOUSE_UP, trackSkin_stage_mouseUpHandler, false, 0, true);
 
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
-
-		this.saveThumbStart(location);
-		this._pointerStartX = location.x;
-		this._pointerStartY = location.y;
+		this.saveThumbStart(this.mouseX, this.mouseY);
+		this._pointerStartX = this.mouseX;
+		this._pointerStartY = this.mouseY;
 		this._dragging = true;
 		ScrollEvent.dispatch(this, ScrollEvent.SCROLL_START);
 
+		var newValue = this.locationToValue(this.mouseX, this.mouseY);
+		newValue = this.restrictValue(newValue);
 		// use the setter
-		this.value = this.locationToValue(location.x, location.y);
+		this.value = newValue;
 	}
 
 	private function trackSkin_stage_mouseMoveHandler(event:MouseEvent):Void {
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
-
+		var newValue = this.locationToValue(this.mouseX, this.mouseY);
+		newValue = this.restrictValue(newValue);
 		// use the setter
-		this.value = this.locationToValue(location.x, location.y);
+		this.value = newValue;
 	}
 
 	private function trackSkin_stage_mouseUpHandler(event:MouseEvent):Void {

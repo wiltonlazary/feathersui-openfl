@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -22,6 +22,8 @@ import openfl.events.EventDispatcher;
 	entire width of the container. The height of items is determined by the
 	measured height of the first item, or it may be overridden using the
 	`rowHeight` property.
+
+	@event openfl.events.Event.CHANGE
 
 	@since 1.0.0
 **/
@@ -471,12 +473,61 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 		return this._verticalAlign;
 	}
 
+	private var _contentJustify:Bool = false;
+
+	/**
+		When `contentJustify` is `true`, the width of the items is set to
+		either the explicit width of the container, or the maximum width of
+		all items, whichever is larger. When `false`, the width of the items
+		is set to the explicit width of the container, even if the items are
+		measured to be larger.
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var contentJustify(get, set):Bool;
+
+	private function get_contentJustify():Bool {
+		return this._contentJustify;
+	}
+
+	private function set_contentJustify(value:Bool):Bool {
+		if (this._contentJustify == value) {
+			return this._contentJustify;
+		}
+		this._contentJustify = value;
+		FeathersEvent.dispatch(this, Event.CHANGE);
+		return this._contentJustify;
+	}
+
+	/**
+		Sets all four padding properties to the same value.
+
+		@see `VerticalListFixedRowLayout.paddingTop`
+		@see `VerticalListFixedRowLayout.paddingRight`
+		@see `VerticalListFixedRowLayout.paddingBottom`
+		@see `VerticalListFixedRowLayout.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
 	/**
 		@see `feathers.layout.ILayout.layout()`
 	**/
 	public function layout(items:Array<DisplayObject>, measurements:Measurements, ?result:LayoutBoundsResult):LayoutBoundsResult {
-		var viewPortWidth = this.calculateViewPortWidth(items, measurements);
-		var itemWidth = viewPortWidth - this._paddingLeft - this._paddingRight;
+		var maxItemWidth = this.calculateMaxItemWidth(items);
+		var viewPortWidth = this.calculateViewPortWidth(maxItemWidth, measurements);
+		var minItemWidth = viewPortWidth - this._paddingLeft - this._paddingRight;
+		var itemWidth = maxItemWidth;
+		if (!this._contentJustify || itemWidth < minItemWidth) {
+			itemWidth = minItemWidth;
+		}
 		var actualRowHeight = this.calculateRowHeight(items, itemWidth);
 		var positionY = this._paddingTop;
 		for (item in items) {
@@ -523,20 +574,29 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 		if (result == null) {
 			result = new LayoutBoundsResult();
 		}
-		result.contentWidth = viewPortWidth;
+		result.contentWidth = itemWidth + this._paddingLeft + this._paddingRight;
 		result.contentHeight = positionY;
 		result.viewPortWidth = viewPortWidth;
 		result.viewPortHeight = viewPortHeight;
 		return result;
 	}
 
-	private function calculateViewPortWidth(items:Array<DisplayObject>, measurements:Measurements):Float {
-		if (measurements.width != null) {
-			return measurements.width;
-		}
-		var maxWidth = 0.0;
+	private function calculateMaxItemWidth(items:Array<DisplayObject>):Float {
+		var maxItemWidth = 0.0;
 		for (i in 0...items.length) {
 			var item = items[i];
+			if (this._virtualCache != null && this._virtualCache.length > i) {
+				var cacheItem = Std.downcast(this._virtualCache[i], VirtualCacheItem);
+				if (cacheItem != null) {
+					// prefer the cached width because that's the original
+					// measured width and not the justified width
+					var itemWidth = cacheItem.itemWidth;
+					if (maxItemWidth < itemWidth) {
+						maxItemWidth = itemWidth;
+					}
+					continue;
+				}
+			}
 			if (item == null) {
 				continue;
 			}
@@ -549,11 +609,30 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 				cast(item, IValidating).validateNow();
 			}
 			var itemWidth = item.width;
-			if (itemWidth > maxWidth) {
-				maxWidth = itemWidth;
+			if (maxItemWidth < itemWidth) {
+				maxItemWidth = itemWidth;
+			}
+			if (this._virtualCache != null) {
+				var cacheItem = Std.downcast(this._virtualCache[i], VirtualCacheItem);
+				if (cacheItem == null) {
+					if (Std.is(item, IValidating)) {
+						cast(item, IValidating).validateNow();
+					}
+					// save the original measured width in the cache to be used
+					// again in future calculations
+					cacheItem = new VirtualCacheItem(itemWidth, 0.0);
+					this._virtualCache[i] = cacheItem;
+				}
 			}
 		}
-		return maxWidth + this._paddingLeft + this._paddingRight;
+		return maxItemWidth;
+	}
+
+	private function calculateViewPortWidth(maxItemWidth:Float, measurements:Measurements):Float {
+		if (measurements.width != null) {
+			return measurements.width;
+		}
+		return maxItemWidth + this._paddingLeft + this._paddingRight;
 	}
 
 	private function calculateRowHeight(items:Array<DisplayObject>, itemWidth:Float):Float {
@@ -565,22 +644,23 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 			for (i in 0...items.length) {
 				var item = items[i];
 				if (item == null) {
-					if (this._virtualCache == null || this._virtualCache.length <= i) {
+					if (this._virtualCache == null || this._virtualCache.length == 0) {
 						continue;
 					}
 					var cacheItem = Std.downcast(this._virtualCache[0], VirtualCacheItem);
 					if (cacheItem == null) {
 						continue;
 					}
+					// use the last known row height, if available
 					actualRowHeight = cacheItem.itemHeight;
 					break;
 				}
-				item.width = itemWidth;
 				if (Std.is(item, ILayoutObject)) {
 					if (!cast(item, ILayoutObject).includeInLayout) {
 						continue;
 					}
 				}
+				item.width = itemWidth;
 				if (Std.is(item, IValidating)) {
 					cast(item, IValidating).validateNow();
 				}
@@ -589,11 +669,7 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 					// since all items are the same height, we can store just
 					// one value as an optimization
 					var cacheItem = Std.downcast(this._virtualCache[0], VirtualCacheItem);
-					if (cacheItem == null) {
-						cacheItem = new VirtualCacheItem(actualRowHeight);
-						this._virtualCache[0] = cacheItem;
-						FeathersEvent.dispatch(this, Event.CHANGE);
-					} else if (cacheItem.itemHeight != actualRowHeight) {
+					if (cacheItem != null && cacheItem.itemHeight != actualRowHeight) {
 						cacheItem.itemHeight = actualRowHeight;
 						this._virtualCache[0] = cacheItem;
 						FeathersEvent.dispatch(this, Event.CHANGE);
@@ -615,7 +691,7 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 		var itemHeight = 0.0;
 		if (this._rowHeight != null) {
 			itemHeight = this._rowHeight;
-		} else if (this._virtualCache != null) {
+		} else if (this._virtualCache != null && this._virtualCache.length != 0) {
 			var cacheItem = Std.downcast(this._virtualCache[0], VirtualCacheItem);
 			if (cacheItem != null) {
 				itemHeight = cacheItem.itemHeight;
@@ -656,7 +732,7 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 		var itemHeight = 0.0;
 		if (this._rowHeight != null) {
 			itemHeight = this._rowHeight;
-		} else if (this._virtualCache != null) {
+		} else if (this._virtualCache != null && this._virtualCache.length != 0) {
 			var cacheItem = Std.downcast(this._virtualCache[0], VirtualCacheItem);
 			if (cacheItem != null) {
 				itemHeight = cacheItem.itemHeight;
@@ -713,9 +789,11 @@ class VerticalListFixedRowLayout extends EventDispatcher implements IVirtualLayo
 
 @:dox(hide)
 private class VirtualCacheItem {
-	public function new(itemHeight:Float) {
+	public function new(itemWidth:Float, itemHeight:Float) {
+		this.itemWidth = itemWidth;
 		this.itemHeight = itemHeight;
 	}
 
+	public var itemWidth:Float;
 	public var itemHeight:Float;
 }

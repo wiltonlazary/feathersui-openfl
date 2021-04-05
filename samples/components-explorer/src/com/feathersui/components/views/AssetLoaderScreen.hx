@@ -2,19 +2,17 @@ package com.feathersui.components.views;
 
 import feathers.controls.AssetLoader;
 import feathers.controls.Button;
+import feathers.controls.Header;
 import feathers.controls.Label;
-import feathers.controls.LayoutGroup;
 import feathers.controls.Panel;
 import feathers.events.TriggerEvent;
-import feathers.layout.AnchorLayout;
-import feathers.layout.AnchorLayoutData;
 import feathers.layout.VerticalLayout;
 import openfl.events.Event;
 
 class AssetLoaderScreen extends Panel {
 	private var syncAssetLoader:AssetLoader;
 	private var asyncAssetLoader:AssetLoader;
-	private var urlLoader:AssetLoader;
+	private var urlAssetLoader:AssetLoader;
 
 	override private function initialize():Void {
 		super.initialize();
@@ -43,40 +41,42 @@ class AssetLoaderScreen extends Panel {
 		// uses openfl.Assets.loadBitmap() to get a non-embedded asset by ID
 		// <assets id="openfl" path="assets/img/openfl.png" embed="false"/>
 		this.asyncAssetLoader.source = "openfl";
+		this.asyncAssetLoader.addEventListener(Event.COMPLETE, asyncAssetLoader_completeHandler);
 		this.addChild(this.asyncAssetLoader);
 		var asyncLabel = new Label();
 		asyncLabel.text = "Asset (Async)";
 		this.addChild(asyncLabel);
 
-		this.urlLoader = new AssetLoader();
+		this.urlAssetLoader = new AssetLoader();
 		// uses openfl.display.Loader to load an image from the web
-		this.urlLoader.source = "https://feathersui.com/samples/haxe-openfl/components-explorer/images/feathersui-icon.png";
-		this.addChild(this.urlLoader);
+		this.urlAssetLoader.source = "https://feathersui.com/samples/haxe-openfl/components-explorer/images/feathersui-icon.png";
+		this.urlAssetLoader.addEventListener(Event.COMPLETE, urlAssetLoader_completeHandler);
+		this.addChild(this.urlAssetLoader);
 		var urlLabel = new Label();
 		urlLabel.text = "URL (Async)";
 		this.addChild(urlLabel);
 	}
 
 	private function createHeader():Void {
-		var header = new LayoutGroup();
-		header.variant = LayoutGroup.VARIANT_TOOL_BAR;
-		header.layout = new AnchorLayout();
+		var header = new Header();
+		header.text = "Asset Loader";
 		this.header = header;
-
-		var headerTitle = new Label();
-		headerTitle.variant = Label.VARIANT_HEADING;
-		headerTitle.text = "Asset Loader";
-		headerTitle.layoutData = AnchorLayoutData.center();
-		header.addChild(headerTitle);
 
 		var backButton = new Button();
 		backButton.text = "Back";
-		backButton.layoutData = AnchorLayoutData.middleLeft(0.0, 10.0);
 		backButton.addEventListener(TriggerEvent.TRIGGER, backButton_triggerHandler);
-		header.addChild(backButton);
+		header.leftView = backButton;
 	}
 
 	private function backButton_triggerHandler(event:TriggerEvent):Void {
 		this.dispatchEvent(new Event(Event.COMPLETE));
+	}
+
+	private function asyncAssetLoader_completeHandler(event:Event):Void {
+		trace("async asset complete: " + this.asyncAssetLoader.source);
+	}
+
+	private function urlAssetLoader_completeHandler(event:Event):Void {
+		trace("URL asset complete: " + this.urlAssetLoader.source);
 	}
 }

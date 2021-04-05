@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,15 +8,17 @@
 
 package feathers.controls;
 
-import feathers.core.IStateObserver;
 import feathers.controls.supportClasses.BaseScrollContainer;
 import feathers.controls.supportClasses.TextFieldViewPort;
+import feathers.core.IStageFocusDelegate;
 import feathers.core.IStateContext;
+import feathers.core.IStateObserver;
 import feathers.core.ITextControl;
 import feathers.events.FeathersEvent;
 import feathers.text.TextFormat;
 import feathers.themes.steel.components.SteelTextAreaStyles;
 import openfl.display.DisplayObject;
+import openfl.display.InteractiveObject;
 import openfl.events.Event;
 import openfl.events.FocusEvent;
 import openfl.events.KeyboardEvent;
@@ -39,6 +41,8 @@ import openfl.ui.Keyboard;
 	this.addChild( textArea );
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when `TextArea.text` changes.
+
 	@see [Tutorial: How to use the TextArea component](https://feathersui.com/learn/haxe-openfl/text-area/)
 
 	@since 1.0.0
@@ -47,7 +51,7 @@ import openfl.ui.Keyboard;
 @:meta(DefaultProperty("text"))
 @defaultXmlProperty("text")
 @:styleContext
-class TextArea extends BaseScrollContainer implements IStateContext<TextInputState> implements ITextControl {
+class TextArea extends BaseScrollContainer implements IStateContext<TextInputState> implements ITextControl implements IStageFocusDelegate {
 	/**
 		Creates a new `TextArea` object.
 
@@ -194,6 +198,19 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 		this.setInvalid(DATA);
 		FeathersEvent.dispatch(this, Event.CHANGE);
 		return this._text;
+	}
+
+	/**
+		@see `feathers.controls.ITextControl.baseline`
+	**/
+	@:flash.property
+	public var baseline(get, never):Float;
+
+	private function get_baseline():Float {
+		if (this.textFieldViewPort == null) {
+			return 0.0;
+		}
+		return this.paddingTop + this.textFieldViewPort.baseline;
 	}
 
 	private var _prompt:String;
@@ -502,6 +519,16 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 		return false;
 	}
 
+	@:flash.property
+	public var stageFocusTarget(get, never):InteractiveObject;
+
+	private function get_stageFocusTarget():InteractiveObject {
+		if (this.textFieldViewPort == null) {
+			return null;
+		}
+		return this.textFieldViewPort.stageFocusTarget;
+	}
+
 	private var _stateToSkin:Map<TextInputState, DisplayObject> = new Map();
 
 	/**
@@ -635,6 +662,7 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 
 	override private function update():Void {
 		var dataInvalid = this.isInvalid(DATA);
+		var sizeInvalid = this.isInvalid(SIZE);
 		var stateInvalid = this.isInvalid(STATE);
 		var stylesInvalid = this.isInvalid(STYLES);
 
@@ -648,8 +676,8 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 			this.refreshPromptStyles();
 		}
 
-		if (dataInvalid || stylesInvalid) {
-			this.refreshPromptText();
+		if (dataInvalid || stylesInvalid || sizeInvalid) {
+			this.refreshPromptText(sizeInvalid);
 		}
 
 		if (stylesInvalid) {
@@ -685,12 +713,13 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 		this.layoutPrompt();
 	}
 
-	override private function refreshBackgroundSkin():Void {
-		super.refreshBackgroundSkin();
-		if (Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = this;
+	override private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin != null) {
+			if (Std.is(skin, IStateObserver)) {
+				cast(skin, IStateObserver).stateContext = this;
+			}
 		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		super.addCurrentBackgroundSkin(skin);
 	}
 
 	override private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -732,13 +761,16 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 		if (this.promptTextField == null) {
 			this.promptTextField = new TextField();
 			this.promptTextField.selectable = false;
+			this.promptTextField.mouseWheelEnabled = false;
+			this.promptTextField.mouseEnabled = false;
+			this.promptTextField.multiline = true;
 			this.addChild(this.promptTextField);
 		}
 		this.promptTextField.visible = this._text.length == 0;
 	}
 
-	private function refreshPromptText():Void {
-		if (this._prompt == null || this._prompt == this._previousPrompt && !this._updatedPromptStyles) {
+	private function refreshPromptText(sizeInvalid:Bool):Void {
+		if (this._prompt == null || this._prompt == this._previousPrompt && !this._updatedPromptStyles && !sizeInvalid) {
 			// nothing to refresh
 			return;
 		}
@@ -751,9 +783,13 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 		} else {
 			this.promptTextField.text = "\u200b"; // zero-width space
 		}
+		// to get an accurate measurement, we need to temporarily disable
+		// wrapping to multiple lines
+		this.promptTextField.wordWrap = false;
 		this._promptTextMeasuredWidth = this.promptTextField.width;
 		this._promptTextMeasuredHeight = this.promptTextField.height;
 		this.promptTextField.autoSize = TextFieldAutoSize.NONE;
+		this.promptTextField.wordWrap = true;
 		if (!hasText) {
 			this.promptTextField.text = "";
 		}
@@ -799,19 +835,27 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 			return;
 		}
 
-		this.promptTextField.x = this.paddingLeft + this.textPaddingLeft;
-		this.promptTextField.y = this.paddingTop + this.textPaddingTop;
+		this.promptTextField.x = this.leftViewPortOffset + this.textPaddingLeft;
+		this.promptTextField.y = this.topViewPortOffset + this.textPaddingTop;
 
-		if (this._promptTextMeasuredWidth > this.viewPort.visibleWidth) {
-			this.promptTextField.width = this.viewPort.visibleHeight;
+		var maxPromptWidth = this.viewPort.visibleWidth - this.textPaddingLeft - this.textPaddingRight;
+		if (this._promptTextMeasuredWidth > maxPromptWidth) {
+			#if flash
+			this.promptTextField.autoSize = NONE;
+			this.promptTextField.wordWrap = true;
+			#end
+			this.promptTextField.width = maxPromptWidth;
 		} else {
+			#if flash
+			// this is workaround for a weird flash text measurement bug
+			// sometimes, TextField width is wrong when autoSize is enabled,
+			// and that causes the last word to wrap to the next line
+			this.promptTextField.autoSize = LEFT;
+			this.promptTextField.wordWrap = false;
+			#end
 			this.promptTextField.width = this._promptTextMeasuredWidth;
 		}
-		if (this._promptTextMeasuredHeight > this.viewPort.visibleHeight) {
-			this.promptTextField.height = this.viewPort.visibleHeight;
-		} else {
-			this.promptTextField.height = this._promptTextMeasuredHeight;
-		}
+		this.promptTextField.height = this.viewPort.visibleHeight - this.textPaddingTop - this.textPaddingBottom;
 	}
 
 	override private function getCurrentBackgroundSkin():DisplayObject {
@@ -852,22 +896,7 @@ class TextArea extends BaseScrollContainer implements IStateContext<TextInputSta
 	}
 
 	override private function baseScrollContainer_keyDownHandler(event:KeyboardEvent):Void {
-		if (!this._enabled || event.isDefaultPrevented()) {
-			return;
-		}
-		switch (event.keyCode) {
-			case Keyboard.UP:
-			case Keyboard.DOWN:
-			case Keyboard.LEFT:
-			case Keyboard.RIGHT:
-			case Keyboard.PAGE_UP:
-			case Keyboard.PAGE_DOWN:
-			case Keyboard.HOME:
-			case Keyboard.END:
-			default:
-				return;
-		}
-		event.stopPropagation();
+		// ignore default scrolling behavior because TextField will handle it
 	}
 
 	private function textArea_viewPort_changeHandler(event:Event):Void {

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -16,8 +16,13 @@ import openfl.events.EventDispatcher;
 	An abstract base class for `IEffectContext` implementations that delegate to
 	other `IEffectContext` instances.
 
+	@event openfl.events.Event.CHANGE
+
+	@event openfl.events.Event.COMPLETE
+
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
 @:event(openfl.events.Event.COMPLETE)
 class BaseDelegateEffectContext extends EventDispatcher implements IEffectContext {
 	private function new(context:IEffectContext) {

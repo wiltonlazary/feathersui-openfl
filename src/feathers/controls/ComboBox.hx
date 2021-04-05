@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -18,7 +18,6 @@ import feathers.data.ListViewItemState;
 import openfl.display.DisplayObject;
 import feathers.themes.steel.components.SteelComboBoxStyles;
 import openfl.events.TouchEvent;
-import lime.ui.KeyCode;
 import openfl.ui.Keyboard;
 import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
@@ -33,6 +32,9 @@ import feathers.core.IDataSelector;
 import feathers.controls.popups.DropDownPopUpAdapter;
 #if air
 import openfl.ui.Multitouch;
+#end
+#if lime
+import lime.ui.KeyCode;
 #end
 
 /**
@@ -67,6 +69,20 @@ import openfl.ui.Multitouch;
 	this.addChild(comboBox);
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when either
+	`ComboBox.selectedItem` or `ComboBox.selectedIndex` changes.
+
+	@event openfl.events.Event.OPEN Dispatched when the pop-up list view is
+	opened.
+
+	@event openfl.events.Event.CLOSE Dispatched when the pop-up list view is
+	closed.
+
+	@event feathers.events.ListViewEvent.ITEM_TRIGGER Dispatched when the user
+	taps or clicks an item renderer in the pop-up list view. The pointer must
+	remain within the bounds of the item renderer on release, and the list
+	view cannot scroll before release, or the gesture will be ignored.
+
 	@see [Tutorial: How to use the ComboBox component](https://feathersui.com/learn/haxe-openfl/combo-box/)
 	@see `feathers.controls.PopUpListView`
 
@@ -75,6 +91,7 @@ import openfl.ui.Multitouch;
 @:event(openfl.events.Event.CHANGE)
 @:event(openfl.events.Event.OPEN)
 @:event(openfl.events.Event.CLOSE)
+@:event(feathers.events.ListViewEvent.ITEM_TRIGGER)
 @:meta(DefaultProperty("dataProvider"))
 @defaultXmlProperty("dataProvider")
 @:styleContext
@@ -85,6 +102,9 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 
 	/**
 		The variant used to style the `Button` child component in a theme.
+
+		To override this default variant, set the
+		`ComboBox.customButtonVariant` property.
 
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
@@ -97,6 +117,9 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 	/**
 		The variant used to style the `TextInput` child component in a theme.
 
+		To override this default variant, set the
+		`ComboBox.customTextInputVariant` property.
+
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
 		@see `ComboBox.customTextInputVariant`
@@ -107,6 +130,9 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 
 	/**
 		The variant used to style the `ListView` child component in a theme.
+
+		To override this default variant, set the
+		`ComboBox.customListViewVariant` property.
 
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
@@ -133,10 +159,12 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?dataProvider:IFlatCollection<Dynamic>) {
 		initializeComboBoxTheme();
 
 		super();
+
+		this.dataProvider = dataProvider;
 
 		this.addEventListener(FocusEvent.FOCUS_IN, comboBox_focusInHandler);
 		this.addEventListener(Event.REMOVED_FROM_STAGE, comboBox_removedFromStageHandler);
@@ -150,10 +178,18 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 	private var buttonMeasurements = new Measurements();
 	private var textInputMeasurements = new Measurements();
 
-	private var _dataProvider:IFlatCollection<Dynamic> = null;
+	private var _dataProvider:IFlatCollection<Dynamic>;
 
 	/**
 		The collection of data displayed by the list.
+
+		Items in the collection must be class instances or anonymous structures.
+		Do not add primitive values (such as strings, booleans, or numeric
+		values) directly to the collection.
+
+		Additionally, all items in the collection must be unique object
+		instances. Do not add the same instance to the collection more than
+		once because a runtime exception will be thrown.
 
 		The following example passes in a data provider and tells the item
 		renderer how to interpret the data:
@@ -364,7 +400,11 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 	private var _previousCustomTextInputVariant:String = null;
 
 	/**
-		A custom variant to set on the text input.
+		A custom variant to set on the text input, instead of
+		`ComboBox.CHILD_VARIANT_TEXT_INPUT`.
+
+		The `customTextInputVariant` will be not be used if the result of
+		`textInputFactory` already has a variant set.
 
 		@see `ComboBox.CHILD_VARIANT_TEXT_INPUT`
 
@@ -376,7 +416,11 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 	private var _previousCustomButtonVariant:String = null;
 
 	/**
-		A custom variant to set on the button.
+		A custom variant to set on the button, instead of
+		`ComboBox.CHILD_VARIANT_BUTTON`.
+
+		The `customButtonVariant` will be not be used if the result of
+		`buttonFactory` already has a variant set.
 
 		@see `ComboBox.CHILD_VARIANT_BUTTON`
 
@@ -388,7 +432,11 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 	private var _previousCustomListViewVariant:String = null;
 
 	/**
-		A custom variant to set on the pop-up list view.
+		A custom variant to set on the pop-up list view, instead of
+		`ComboBox.CHILD_VARIANT_LIST_VIEW`.
+
+		The `customListViewVariant` will be not be used if the result of
+		`listViewFactory` already has a variant set.
 
 		@see `ComboBox.CHILD_VARIANT_LIST_VIEW`
 
@@ -441,7 +489,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 		```hx
 		comboBox.textInputFactory = () ->
 		{
-			return new Button();
+			return new TextInput();
 		};
 		```
 
@@ -636,11 +684,11 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 			this.refreshData();
 		}
 
-		if (selectionInvalid || listViewFactoryInvalid || buttonFactoryInvalid) {
+		if (selectionInvalid || listViewFactoryInvalid || buttonFactoryInvalid || textInputFactoryInvalid) {
 			this.refreshSelection();
 		}
 
-		if (stateInvalid || listViewFactoryInvalid || buttonFactoryInvalid) {
+		if (stateInvalid || listViewFactoryInvalid || buttonFactoryInvalid || textInputFactoryInvalid) {
 			this.refreshEnabled();
 		}
 
@@ -656,6 +704,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 		if (this.button != null) {
 			this.button.removeEventListener(MouseEvent.MOUSE_DOWN, comboBox_button_mouseDownHandler);
 			this.button.removeEventListener(TouchEvent.TOUCH_BEGIN, comboBox_button_touchBeginHandler);
+			this.removeChild(this.button);
 			this.button = null;
 		}
 		var factory = this._buttonFactory != null ? this._buttonFactory : defaultButtonFactory;
@@ -675,6 +724,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 			this.textInput.removeEventListener(Event.CHANGE, comboBox_textInput_changeHandler);
 			this.textInput.removeEventListener(KeyboardEvent.KEY_DOWN, comboBox_textInput_keyDownHandler);
 			this.textInput.removeEventListener(FocusEvent.FOCUS_IN, comboBox_textInput_focusInHandler);
+			this.removeChild(this.textInput);
 			this.textInput = null;
 		}
 		var factory = this._textInputFactory != null ? this._textInputFactory : defaultTextInputFactory;
@@ -802,6 +852,9 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 	}
 
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
+		if (event.isDefaultPrevented()) {
+			return;
+		}
 		if (this._dataProvider == null || this._dataProvider.length == 0) {
 			return;
 		}
@@ -832,7 +885,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 		} else if (result >= this._dataProvider.length) {
 			result = this._dataProvider.length - 1;
 		}
-		event.stopPropagation();
+		event.preventDefault();
 		// use the setter
 		this.selectedIndex = result;
 		if (this.open) {
@@ -846,6 +899,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 		}
 		this.navigateWithKeyboard(event);
 		if (event.keyCode == Keyboard.ENTER) {
+			event.preventDefault();
 			this.closeListView();
 		}
 	}
@@ -899,6 +953,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 	}
 
 	private function comboBox_listView_itemTriggerHandler(event:ListViewEvent):Void {
+		this.dispatchEvent(event);
 		if (!this.popUpAdapter.persistent) {
 			this.closeListView();
 		}
@@ -952,6 +1007,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 				}
 				event.preventDefault();
 				this.closeListView();
+			#if lime
 			case KeyCode.APP_CONTROL_BACK:
 				if (event.isDefaultPrevented()) {
 					return;
@@ -961,6 +1017,7 @@ class ComboBox extends FeathersControl implements IIndexSelector implements IDat
 				}
 				event.preventDefault();
 				this.closeListView();
+			#end
 		}
 	}
 

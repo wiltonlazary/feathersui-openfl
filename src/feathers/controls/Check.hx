@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -37,10 +37,10 @@ class Check extends ToggleButton {
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?text:String, selected:Bool = false) {
 		initializeCheckTheme();
 
-		super();
+		super(text, selected);
 	}
 
 	private function initializeCheckTheme():Void {

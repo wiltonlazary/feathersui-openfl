@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -104,6 +104,21 @@ class FocusManager {
 		}
 		stack.resize(0);
 		_rootToData.remove(root);
+	}
+
+	/**
+		Changes the currently focused object.
+
+		Throws `ArgumentError` if the object does not have a focus manager.
+
+		@since 1.0.0
+	**/
+	public static function setFocus(focusable:IFocusObject):Void {
+		var focusManager = focusable.focusManager;
+		if (focusManager == null) {
+			throw new ArgumentError("Cannot set focus because focus manager is null.");
+		}
+		focusManager.focus = focusable;
 	}
 
 	private static function push(rootManager:IFocusManager, secondaryRoot:DisplayObject):IFocusManager {

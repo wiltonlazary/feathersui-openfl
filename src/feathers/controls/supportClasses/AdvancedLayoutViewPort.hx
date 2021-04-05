@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -71,7 +71,7 @@ class AdvancedLayoutViewPort extends FeathersControl implements IViewPort {
 		return this._explicitMinVisibleWidth;
 	}
 
-	private var _maxVisibleWidth:Null<Float> = Math.POSITIVE_INFINITY;
+	private var _maxVisibleWidth:Null<Float> = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 
 	/**
 		@see `feathers.controls.supportClasses.IViewPort.maxVisibleWidth`
@@ -161,7 +161,7 @@ class AdvancedLayoutViewPort extends FeathersControl implements IViewPort {
 		return this._explicitMinVisibleHeight;
 	}
 
-	private var _maxVisibleHeight:Null<Float> = Math.POSITIVE_INFINITY;
+	private var _maxVisibleHeight:Null<Float> = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 
 	/**
 		@see `feathers.controls.supportClasses.IViewPort.maxVisibleHeight`
@@ -307,6 +307,7 @@ class AdvancedLayoutViewPort extends FeathersControl implements IViewPort {
 		this.refreshLayoutMeasurements();
 		this.refreshLayoutProperties();
 		this.refreshChildren(this._layoutItems);
+		this._layoutResult.reset();
 		this._layout.layout(this._layoutItems, this._layoutMeasurements, this._layoutResult);
 		this.handleLayoutResult();
 	}
@@ -341,11 +342,11 @@ class AdvancedLayoutViewPort extends FeathersControl implements IViewPort {
 		}
 		var viewPortMaxWidth = this._maxVisibleWidth;
 		if (needsMaxWidth) {
-			viewPortMaxWidth = Math.POSITIVE_INFINITY;
+			viewPortMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		var viewPortMaxHeight = this._maxVisibleHeight;
 		if (needsMaxHeight) {
-			viewPortMaxHeight = Math.POSITIVE_INFINITY;
+			viewPortMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		this._layoutMeasurements.minWidth = viewPortMinWidth;
 		this._layoutMeasurements.minHeight = viewPortMinHeight;
@@ -354,20 +355,19 @@ class AdvancedLayoutViewPort extends FeathersControl implements IViewPort {
 	}
 
 	private function handleLayoutResult():Void {
-		var contentWidth = this._layoutResult.contentWidth;
-		var contentHeight = this._layoutResult.contentHeight;
-		this.saveMeasurements(contentWidth, contentHeight, contentWidth, contentHeight, Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY);
+		this.saveMeasurements(this._layoutResult.contentWidth, this._layoutResult.contentHeight, this._layoutResult.contentMinWidth,
+			this._layoutResult.contentMinHeight);
 		var viewPortWidth = this._layoutResult.viewPortWidth;
 		var viewPortHeight = this._layoutResult.viewPortHeight;
 		this._actualVisibleWidth = viewPortWidth;
 		this._actualVisibleHeight = viewPortHeight;
-		this._actualMinVisibleWidth = viewPortWidth;
-		this._actualMinVisibleHeight = viewPortHeight;
+		this._actualMinVisibleWidth = this._layoutResult.contentMinWidth;
+		this._actualMinVisibleHeight = this._layoutResult.contentMinHeight;
 
 		this._background.x = 0.0;
 		this._background.y = 0.0;
-		this._background.width = this.actualWidth;
-		this._background.height = this.actualHeight;
+		this._background.width = Math.max(this.actualWidth, this._actualVisibleWidth);
+		this._background.height = Math.max(this.actualHeight, this._actualVisibleHeight);
 	}
 
 	private function layout_changeHandler(event:Event):Void {

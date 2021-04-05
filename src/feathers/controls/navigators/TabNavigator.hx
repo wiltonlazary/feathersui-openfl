@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,11 +8,13 @@
 
 package feathers.controls.navigators;
 
+import feathers.core.InvalidationFlag;
 import feathers.core.IDataSelector;
 import feathers.core.IIndexSelector;
 import feathers.data.IFlatCollection;
 import feathers.events.FeathersEvent;
 import feathers.events.FlatCollectionEvent;
+import feathers.events.TabBarEvent;
 import feathers.layout.RelativePosition;
 import feathers.motion.effects.EventToPositionEffectContext;
 import feathers.motion.effects.IEffectContext;
@@ -50,15 +52,36 @@ import openfl.events.Event;
 @defaultXmlProperty("dataProvider")
 @:styleContext
 class TabNavigator extends BaseNavigator implements IIndexSelector implements IDataSelector<TabItem> {
+	private static final INVALIDATION_FLAG_TAB_BAR_FACTORY = InvalidationFlag.CUSTOM("tabBarFactory");
+
+	/**
+		The variant used to style the `TabBar` child component.
+
+		To override this default variant, set the
+		`TabNavigator.customTabBarVariant` property.
+
+		@see `TabNavigator.customTabBarVariant`
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@since 1.0.0
+	**/
+	public static final CHILD_VARIANT_TAB_BAR = "tabNavigator_tabBar";
+
+	private static function defaultTabBarFactory():TabBar {
+		return new TabBar();
+	}
+
 	/**
 		Creates a new `TabNavigator` object.
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?dataProvider:IFlatCollection<TabItem>) {
 		initializeTabNavigatorTheme();
 
 		super();
+
+		this.dataProvider = dataProvider;
 	}
 
 	private var tabBar:TabBar;
@@ -66,8 +89,17 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 	private var _previousEdgePuller:EdgePuller;
 	private var _nextEdgePuller:EdgePuller;
 
-	private var _dataProvider:IFlatCollection<TabItem> = null;
+	private var _dataProvider:IFlatCollection<TabItem>;
 
+	/**
+		The collection of `TabItem` data displayed by the navigator.
+
+		All `TabItem` instances in the collection must be unique. Do not add
+		the same instance to the collection more than once because a runtime
+		exception may be thrown.
+
+		@since 1.0.0
+	**/
 	@:flash.property
 	public var dataProvider(get, set):IFlatCollection<TabItem>;
 
@@ -141,7 +173,8 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 			this._selectedItem = this._dataProvider.get(this._selectedIndex);
 		}
 		this.setInvalid(SELECTION);
-		FeathersEvent.dispatch(this, Event.CHANGE);
+		// don't dispatch Event.CHANGE here because it will be dispatched as
+		// part of the process of changing the view in BaseNavigator
 		return this._selectedIndex;
 	}
 
@@ -259,16 +292,67 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 	@:style
 	public var nextTransition:(DisplayObject, DisplayObject) -> IEffectContext = null;
 
+	/**
+		The space, measured in pixels, between the navigator's active view and
+		its tab bar.
+
+		@since 1.0.0
+	**/
+	@:style
+	public var gap:Float = 0.0;
+
+	/**
+		An optional custom variant to use for the tab bar sub-component,
+		instead of `TabNavigator.CHILD_VARIANT_TAB_BAR`.
+
+		The `customTabBarVariant` will be not be used if the result of
+		`tabBarFactory` already has a variant set.
+
+		@see `TabNavigator.CHILD_VARIANT_TAB_BAR`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var customTabBarVariant:String = null;
+
+	private var _tabBarFactory:() -> TabBar;
+
+	/**
+		Creates the tab bar, which must be of type `feathers.controls.TabBar`.
+
+		In the following example, a custom tab bar factory is provided:
+
+		```hx
+		navigator.tabBarFactory = () ->
+		{
+			return new TabBar();
+		};
+		```
+
+		@see `feathers.controls.TabBar`
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var tabBarFactory(get, set):() -> TabBar;
+
+	private function get_tabBarFactory():() -> TabBar {
+		return this._tabBarFactory;
+	}
+
+	private function set_tabBarFactory(value:() -> TabBar):() -> TabBar {
+		if (this._tabBarFactory == value) {
+			return this._tabBarFactory;
+		}
+		this._tabBarFactory = value;
+		this.setInvalid(INVALIDATION_FLAG_TAB_BAR_FACTORY);
+		return this._tabBarFactory;
+	}
+
 	private var _ignoreSelectionChange = false;
 
 	override private function initialize():Void {
 		super.initialize();
-
-		if (this.tabBar == null) {
-			this.tabBar = new TabBar();
-			this.addChild(this.tabBar);
-		}
-		this.tabBar.addEventListener(Event.CHANGE, tabNavigator_tabBar_changeHandler);
 
 		if (this._previousEdgePuller == null) {
 			this._previousEdgePuller = new EdgePuller(this, LEFT);
@@ -295,8 +379,13 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 	override private function update():Void {
 		var dataInvalid = this.isInvalid(DATA);
 		var selectionInvalid = this.isInvalid(SELECTION);
+		var tabBarInvalid = this.isInvalid(INVALIDATION_FLAG_TAB_BAR_FACTORY);
 
-		if (dataInvalid) {
+		if (tabBarInvalid) {
+			this.createTabBar();
+		}
+
+		if (dataInvalid || tabBarInvalid) {
 			this.tabBar.itemToText = this.itemToText;
 			this.tabBar.dataProvider = this._dataProvider;
 
@@ -304,7 +393,7 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 			this._nextEdgePuller.simulateTouch = this._simulateTouch;
 		}
 
-		if (dataInvalid || selectionInvalid) {
+		if (dataInvalid || selectionInvalid || tabBarInvalid) {
 			this.refreshSelection();
 		}
 
@@ -333,14 +422,31 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 			this.tabBar.validateNow();
 			switch (this.tabBarPosition) {
 				case TOP:
-					this.topContentOffset = this.tabBar.height;
+					this.topContentOffset = this.tabBar.height + this.gap;
 				case BOTTOM:
-					this.bottomContentOffset = this.tabBar.height;
+					this.bottomContentOffset = this.tabBar.height + this.gap;
 				default:
 					throw new ArgumentError('Invalid tabBarPosition ${this.tabBarPosition}');
 			}
 		}
 		return super.measure();
+	}
+
+	private function createTabBar():Void {
+		if (this.tabBar != null) {
+			this.tabBar.removeEventListener(TabBarEvent.ITEM_TRIGGER, tabNavigator_tabBar_itemTriggerHandler);
+			this.tabBar.removeEventListener(Event.CHANGE, tabNavigator_tabBar_changeHandler);
+			this.removeChild(this.tabBar);
+			this.tabBar = null;
+		}
+		var factory = this._tabBarFactory != null ? this._tabBarFactory : defaultTabBarFactory;
+		this.tabBar = factory();
+		if (this.tabBar.variant == null) {
+			this.tabBar.variant = this.customTabBarVariant != null ? this.customTabBarVariant : TabNavigator.CHILD_VARIANT_TAB_BAR;
+		}
+		this.tabBar.addEventListener(TabBarEvent.ITEM_TRIGGER, tabNavigator_tabBar_itemTriggerHandler);
+		this.tabBar.addEventListener(Event.CHANGE, tabNavigator_tabBar_changeHandler);
+		this.addChild(this.tabBar);
 	}
 
 	override private function layoutContent():Void {
@@ -360,14 +466,14 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 			this.activeItemView.x = 0.0;
 			switch (this.tabBarPosition) {
 				case TOP:
-					this.activeItemView.y = this.tabBar.height;
+					this.activeItemView.y = this.tabBar.height + this.gap;
 				case BOTTOM:
 					this.activeItemView.y = 0.0;
 				default:
 					throw new ArgumentError('Invalid tabBarPosition ${this.tabBarPosition}');
 			}
 			this.activeItemView.width = this.actualWidth;
-			this.activeItemView.height = this.actualHeight - this.tabBar.height;
+			this.activeItemView.height = this.actualHeight - this.tabBar.height - this.gap;
 		}
 	}
 
@@ -435,6 +541,10 @@ class TabNavigator extends BaseNavigator implements IIndexSelector implements ID
 		}
 		// use the setter
 		this.selectedIndex = this.tabBar.selectedIndex;
+	}
+
+	private function tabNavigator_tabBar_itemTriggerHandler(event:TabBarEvent):Void {
+		this.dispatchEvent(event);
 	}
 
 	private function tabNavigator_dataProvider_addItemHandler(event:FlatCollectionEvent):Void {

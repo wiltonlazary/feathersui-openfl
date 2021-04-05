@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -17,6 +17,9 @@ import feathers.events.FeathersEvent;
 	with extra minimum and maximum dimensions that may be used in Feathers UI
 	layouts.
 
+	@event openfl.events.Event.RESIZE Dispatched when either the width or the
+	height of the component has changed.
+
 	@since 1.0.0
 **/
 @:event(openfl.events.Event.RESIZE)
@@ -25,14 +28,14 @@ class MeasureSprite extends ValidatingSprite implements IMeasureObject {
 	private var actualHeight:Float = 0.0;
 	private var actualMinWidth:Float = 0.0;
 	private var actualMinHeight:Float = 0.0;
-	private var actualMaxWidth:Float = Math.POSITIVE_INFINITY;
-	private var actualMaxHeight:Float = Math.POSITIVE_INFINITY;
+	private var actualMaxWidth:Float = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
+	private var actualMaxHeight:Float = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 	private var scaledActualWidth:Float = 0.0;
 	private var scaledActualHeight:Float = 0.0;
 	private var scaledActualMinWidth:Float = 0.0;
 	private var scaledActualMinHeight:Float = 0.0;
-	private var scaledActualMaxWidth:Float = Math.POSITIVE_INFINITY;
-	private var scaledActualMaxHeight:Float = Math.POSITIVE_INFINITY;
+	private var scaledActualMaxWidth:Float = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
+	private var scaledActualMaxHeight:Float = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 
 	/**
 		Creates a new `MeasureSprite` object.
@@ -290,8 +293,8 @@ class MeasureSprite extends ValidatingSprite implements IMeasureObject {
 		var oldValue = this._explicitMaxWidth;
 		this._explicitMaxWidth = value;
 		if (value == null) {
-			this.actualMaxWidth = Math.POSITIVE_INFINITY;
-			this.scaledActualMaxWidth = Math.POSITIVE_INFINITY;
+			this.actualMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
+			this.scaledActualMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			this.setInvalid(SIZE);
 		} else {
 			// saveMeasurements() might change actualWidth, so keep the old
@@ -326,8 +329,8 @@ class MeasureSprite extends ValidatingSprite implements IMeasureObject {
 		var oldValue = this._explicitMaxHeight;
 		this._explicitMaxHeight = value;
 		if (value == null) {
-			this.actualMaxHeight = Math.POSITIVE_INFINITY;
-			this.scaledActualMaxHeight = Math.POSITIVE_INFINITY;
+			this.actualMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
+			this.scaledActualMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			this.setInvalid(SIZE);
 		} else {
 			// saveMeasurements() might change actualWidth, so keep the old
@@ -439,10 +442,10 @@ class MeasureSprite extends ValidatingSprite implements IMeasureObject {
 	@:dox(show)
 	private function saveMeasurements(width:Float, height:Float, minWidth:Float = 0.0, minHeight:Float = 0.0, ?maxWidth:Float, ?maxHeight:Float):Bool {
 		if (maxWidth == null) {
-			maxWidth = Math.POSITIVE_INFINITY;
+			maxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		if (maxHeight == null) {
-			maxHeight = Math.POSITIVE_INFINITY;
+			maxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		// if any of the dimensions were set explicitly, the explicit values must
 		// take precedence over the measured values
@@ -456,13 +459,13 @@ class MeasureSprite extends ValidatingSprite implements IMeasureObject {
 			maxWidth = this._explicitMaxWidth;
 		} else if (maxWidth == null) {
 			// since it's optional, this is our default
-			maxWidth = Math.POSITIVE_INFINITY;
+			maxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		if (this._explicitMaxHeight != null) {
 			maxHeight = this._explicitMaxHeight;
 		} else if (maxHeight == null) {
 			// since it's optional, this is our default
-			maxHeight = Math.POSITIVE_INFINITY;
+			maxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 
 		// next, we ensure that minimum and maximum measured dimensions are not

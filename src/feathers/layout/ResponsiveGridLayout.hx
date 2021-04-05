@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,6 +8,7 @@
 
 package feathers.layout;
 
+import feathers.core.IValidating;
 import feathers.events.FeathersEvent;
 import openfl.display.DisplayObject;
 import openfl.errors.IllegalOperationError;
@@ -19,6 +20,8 @@ import openfl.events.EventDispatcher;
 	twelve columns). Items may span multiple rows and may be displayed with
 	offsets in between. When a row is "full", items are laid out starting on the
 	next row automatically.
+
+	@event openfl.events.Event.CHANGE
 
 	@see [Tutorial: How to use ResponsiveGridLayout with layout containers](https://feathersui.com/learn/haxe-openfl/responsive-grid-layout/)
 	@see `feathers.layout.ResponsiveGridLayoutData`
@@ -35,14 +38,14 @@ class ResponsiveGridLayout extends EventDispatcher implements ILayout {
 	**/
 	public function new(columnCount:Int = 12, sm:Float = 576.0, md:Float = 768.0, lg:Float = 992.0, xl:Float = 1200.0) {
 		super();
-		this._columnCount = 12;
+		this._columnCount = columnCount;
 		this._sm = sm;
 		this._md = md;
 		this._lg = lg;
 		this._xl = xl;
 	}
 
-	private var _columnCount:Int = 12;
+	private var _columnCount:Int;
 
 	/**
 		The number of columns in the grid.
@@ -377,6 +380,23 @@ class ResponsiveGridLayout extends EventDispatcher implements ILayout {
 	}
 
 	/**
+		Sets all four padding properties to the same value.
+
+		@see `ResponsiveGridLayout.paddingTop`
+		@see `ResponsiveGridLayout.paddingRight`
+		@see `ResponsiveGridLayout.paddingBottom`
+		@see `ResponsiveGridLayout.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
+	/**
 		@see `feathers.layout.ILayout.layout()`
 	**/
 	public function layout(items:Array<DisplayObject>, measurements:Measurements, ?result:LayoutBoundsResult):LayoutBoundsResult {
@@ -443,6 +463,9 @@ class ResponsiveGridLayout extends EventDispatcher implements ILayout {
 		item.x = this._paddingLeft + ((offset != 0) ? ((columnWidth + this._columnGap) * offset) : 0.0);
 		item.y = yPosition;
 		item.width = (span != 0) ? ((columnWidth + this._columnGap) * span) - this._columnGap : columnWidth;
+		if (Std.is(item, IValidating)) {
+			cast(item, IValidating).validateNow();
+		}
 	}
 
 	private function getBreakpoint(viewPortWidth:Float):Breakpoint {

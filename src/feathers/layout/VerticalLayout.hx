@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,15 +8,18 @@
 
 package feathers.layout;
 
-import feathers.events.FeathersEvent;
 import feathers.core.IMeasureObject;
-import openfl.events.Event;
-import openfl.display.DisplayObject;
-import openfl.events.EventDispatcher;
 import feathers.core.IValidating;
+import feathers.events.FeathersEvent;
+import openfl.display.DisplayObject;
+import openfl.errors.ArgumentError;
+import openfl.events.Event;
+import openfl.events.EventDispatcher;
 
 /**
 	Positions items from top to bottom in a single column.
+
+	@event openfl.events.Event.CHANGE
 
 	@see [Tutorial: How to use VerticalLayout with layout containers](https://feathersui.com/learn/haxe-openfl/vertical-layout/)
 	@see `feathers.layout.VerticalLayoutData`
@@ -270,6 +273,23 @@ class VerticalLayout extends EventDispatcher implements ILayout {
 	}
 
 	/**
+		Sets all four padding properties to the same value.
+
+		@see `VerticalLayout.paddingTop`
+		@see `VerticalLayout.paddingRight`
+		@see `VerticalLayout.paddingBottom`
+		@see `VerticalLayout.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
+	/**
 		@see `feathers.layout.ILayout.layout()`
 	**/
 	public function layout(items:Array<DisplayObject>, measurements:Measurements, ?result:LayoutBoundsResult):LayoutBoundsResult {
@@ -295,6 +315,7 @@ class VerticalLayout extends EventDispatcher implements ILayout {
 			item.y = contentHeight;
 			contentHeight += item.height + this._gap;
 		}
+		var maxItemWidth = contentWidth;
 		contentWidth += this._paddingLeft + this._paddingRight;
 		contentHeight += this._paddingBottom;
 		if (items.length > 0) {
@@ -323,7 +344,7 @@ class VerticalLayout extends EventDispatcher implements ILayout {
 		}
 
 		this.applyPercentWidth(items, viewPortWidth);
-		this.applyHorizontalAlign(items, viewPortWidth);
+		this.applyHorizontalAlign(items, maxItemWidth, viewPortWidth);
 		this.applyVerticalAlign(items, contentHeight - this._paddingTop - this._paddingBottom, viewPortHeight);
 
 		if (contentWidth < viewPortWidth) {
@@ -351,7 +372,7 @@ class VerticalLayout extends EventDispatcher implements ILayout {
 		}
 	}
 
-	private inline function applyHorizontalAlign(items:Array<DisplayObject>, viewPortWidth:Float):Void {
+	private inline function applyHorizontalAlign(items:Array<DisplayObject>, maxItemWidth:Float, viewPortWidth:Float):Void {
 		for (item in items) {
 			var layoutObject:ILayoutObject = null;
 			if (Std.is(item, ILayoutObject)) {
@@ -365,11 +386,13 @@ class VerticalLayout extends EventDispatcher implements ILayout {
 					item.x = Math.max(this._paddingLeft, this._paddingLeft + (viewPortWidth - this._paddingLeft - this._paddingRight) - item.width);
 				case CENTER:
 					item.x = Math.max(this._paddingLeft, this._paddingLeft + (viewPortWidth - this._paddingLeft - this._paddingRight - item.width) / 2.0);
+				case LEFT:
+					item.x = this._paddingLeft;
 				case JUSTIFY:
 					item.x = this._paddingLeft;
 					item.width = viewPortWidth - this._paddingLeft - this._paddingRight;
 				default:
-					item.x = this._paddingLeft;
+					throw new ArgumentError("Unknown horizontal align: " + this._horizontalAlign);
 			}
 		}
 	}

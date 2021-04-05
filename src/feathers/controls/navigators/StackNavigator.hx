@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -14,12 +14,14 @@ import feathers.motion.effects.IEffectContext;
 import feathers.themes.steel.components.SteelStackNavigatorStyles;
 import feathers.utils.EdgePuller;
 import feathers.utils.ExclusivePointer;
-import lime.ui.KeyCode;
 import openfl.display.DisplayObject;
 import openfl.events.Event;
 import openfl.events.KeyboardEvent;
 #if flash
 import openfl.ui.Keyboard;
+#end
+#if lime
+import lime.ui.KeyCode;
 #end
 
 /**
@@ -630,8 +632,10 @@ class StackNavigator extends BaseNavigator {
 			case Keyboard.BACK:
 				this.stackNavigator_stage_backKeyUpHandler(event);
 			#end
+			#if lime
 			case KeyCode.APP_CONTROL_BACK:
 				this.stackNavigator_stage_backKeyUpHandler(event);
+			#end
 		}
 	}
 

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -15,6 +15,8 @@ import openfl.events.EventDispatcher;
 /**
 	Provides optional percentage sizing for children of containers that use
 	`VerticalLayout`.
+
+	@event openfl.events.Event.CHANGE
 
 	@see `feathers.layout.VerticalLayout`
 	@see `feathers.layout.ILayoutObject.layoutData`

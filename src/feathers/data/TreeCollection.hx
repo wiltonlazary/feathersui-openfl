@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -17,6 +17,26 @@ import openfl.events.EventDispatcher;
 /**
 	Wraps an `Array` data source with a common API for use with UI controls that
 	support hierarchical data, such as `TreeView`.
+
+	@event openfl.events.Event.CHANGE
+
+	@event feathers.events.HierarchicalCollectionEvent.ADD_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.REMOVE_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.REPLACE_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.REMOVE_ALL
+
+	@event feathers.events.HierarchicalCollectionEvent.RESET
+
+	@event feathers.events.HierarchicalCollectionEvent.UPDATE_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.UPDATE_ALL
+
+	@event feathers.events.HierarchicalCollectionEvent.FILTER_CHANGE
+
+	@event feathers.events.HierarchicalCollectionEvent.SORT_CHANGE
 
 	@see `feathers.controls.TreeView`
 
@@ -56,7 +76,7 @@ class TreeCollection<T> extends EventDispatcher implements IHierarchicalCollecti
 		The following example replaces the data source with a new array:
 
 		```hx
-		collection.data = [];
+		collection.array = [];
 		```
 
 		@since 1.0.0

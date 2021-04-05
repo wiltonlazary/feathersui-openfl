@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -33,6 +33,18 @@ import openfl.geom.Point;
 	(including optional support for layouts), see
 	`feathers.controls.LayoutGroup`.
 
+	@event feathers.events.FeathersEvent.INITIALIZE
+
+	@event feathers.events.FeathersEvent.ENABLE
+
+	@event feathers.events.FeathersEvent.DISABLE
+
+	@event feathers.events.FeathersEvent.CREATION_COMPLETE
+
+	@event feathers.events.FeathersEvent.LAYOUT_DATA_CHANGE
+
+	@event feathers.events.FeathersEvent.STATE_CHANGE
+
 	@since 1.0.0
 
 	@see `feathers.controls.LayoutGroup`
@@ -48,6 +60,7 @@ import openfl.geom.Point;
 class FeathersControl extends MeasureSprite implements IUIControl implements IVariantStyleObject implements ILayoutObject {
 	private function new() {
 		super();
+		super.tabEnabled = Std.is(this, IFocusObject);
 		this.addEventListener(Event.ADDED_TO_STAGE, feathersControl_addedToStageHandler);
 		this.addEventListener(Event.REMOVED_FROM_STAGE, feathersControl_removedFromStageHandler);
 	}
@@ -329,7 +342,7 @@ class FeathersControl extends MeasureSprite implements IUIControl implements IVa
 	public var focusEnabled(get, set):Bool;
 
 	private function get_focusEnabled():Bool {
-		return this._focusEnabled;
+		return this._enabled && this._focusEnabled;
 	}
 
 	private function set_focusEnabled(value:Bool):Bool {
@@ -338,6 +351,11 @@ class FeathersControl extends MeasureSprite implements IUIControl implements IVa
 		}
 		this._focusEnabled = value;
 		return this._focusEnabled;
+	}
+
+	@:getter(tabEnabled)
+	#if !flash override #end private function get_tabEnabled():Bool {
+		return this._enabled && super.tabEnabled;
 	}
 
 	private var _focusRectSkin:DisplayObject = null;
@@ -544,8 +562,11 @@ class FeathersControl extends MeasureSprite implements IUIControl implements IVa
 		point = this._focusManager.focusPane.globalToLocal(point);
 		this._focusRectSkin.x = point.x;
 		this._focusRectSkin.y = point.y;
-		this._focusRectSkin.width = this.actualWidth + this._focusPaddingLeft + this._focusPaddingRight;
-		this._focusRectSkin.height = this.actualHeight + this._focusPaddingTop + this._focusPaddingBottom;
+		point.setTo(this.actualWidth + this._focusPaddingRight, this.actualHeight + this._focusPaddingBottom);
+		point = this.localToGlobal(point);
+		point = this._focusManager.focusPane.globalToLocal(point);
+		this._focusRectSkin.width = point.x - this._focusRectSkin.x;
+		this._focusRectSkin.height = point.y - this._focusRectSkin.y;
 	}
 
 	private function setLayoutDataInternal(value:ILayoutData):ILayoutData {

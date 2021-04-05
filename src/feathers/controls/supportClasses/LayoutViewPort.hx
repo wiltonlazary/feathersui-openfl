@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,10 +8,9 @@
 
 package feathers.controls.supportClasses;
 
+import feathers.layout.IScrollLayout;
 import feathers.utils.MeasurementsUtil;
 import openfl.display.Sprite;
-import feathers.layout.IScrollLayout;
-import feathers.core.InvalidationFlag;
 import openfl.errors.ArgumentError;
 import openfl.geom.Point;
 
@@ -31,12 +30,17 @@ class LayoutViewPort extends LayoutGroup implements IViewPort {
 
 		// an invisible background that makes the entire width and height of the
 		// viewport interactive for touch scrolling
-		var backgroundSkin = new Sprite();
-		backgroundSkin.graphics.beginFill(0xff00ff, 0.0);
-		backgroundSkin.graphics.drawRect(0.0, 0.0, 1.0, 1.0);
-		backgroundSkin.graphics.endFill();
-		this.backgroundSkin = backgroundSkin;
+		this._viewPortBackground = new Sprite();
+		this._viewPortBackground.graphics.beginFill(0xff00ff, 0.0);
+		this._viewPortBackground.graphics.drawRect(0.0, 0.0, 1.0, 1.0);
+		this._viewPortBackground.graphics.endFill();
+		// we're not using the backgroundSkin property because it is not sized
+		// to fill the entire view port visible size when the content size is
+		// smaller than the view port size
+		this._addChildAt(this._viewPortBackground, 0);
 	}
+
+	private var _viewPortBackground:Sprite;
 
 	private var _actualMinVisibleWidth:Float = 0.0;
 	private var _explicitMinVisibleWidth:Null<Float> = null;
@@ -73,7 +77,7 @@ class LayoutViewPort extends LayoutGroup implements IViewPort {
 		return this._explicitMinVisibleWidth;
 	}
 
-	private var _maxVisibleWidth:Null<Float> = Math.POSITIVE_INFINITY;
+	private var _maxVisibleWidth:Null<Float> = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 
 	/**
 		@see `feathers.controls.supportClasses.IViewPort.maxVisibleWidth`
@@ -163,7 +167,7 @@ class LayoutViewPort extends LayoutGroup implements IViewPort {
 		return this._explicitMinVisibleHeight;
 	}
 
-	private var _maxVisibleHeight:Null<Float> = Math.POSITIVE_INFINITY;
+	private var _maxVisibleHeight:Null<Float> = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 
 	/**
 		@see `feathers.controls.supportClasses.IViewPort.maxVisibleHeight`
@@ -311,11 +315,11 @@ class LayoutViewPort extends LayoutGroup implements IViewPort {
 		}
 		var viewPortMaxWidth = this._maxVisibleWidth;
 		if (needsMaxWidth) {
-			viewPortMaxWidth = Math.POSITIVE_INFINITY;
+			viewPortMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		var viewPortMaxHeight = this._maxVisibleHeight;
 		if (needsMaxHeight) {
-			viewPortMaxHeight = Math.POSITIVE_INFINITY;
+			viewPortMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		if (this._currentBackgroundSkin != null) {
 			// because the layout might need it, we account for the
@@ -348,14 +352,18 @@ class LayoutViewPort extends LayoutGroup implements IViewPort {
 	}
 
 	override private function handleLayoutResult():Void {
-		var contentWidth = this._layoutResult.contentWidth;
-		var contentHeight = this._layoutResult.contentHeight;
-		this.saveMeasurements(contentWidth, contentHeight, contentWidth, contentHeight, Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY);
+		this.saveMeasurements(this._layoutResult.contentWidth, this._layoutResult.contentHeight, this._layoutResult.contentMinWidth,
+			this._layoutResult.contentMinHeight);
 		var viewPortWidth = this._layoutResult.viewPortWidth;
 		var viewPortHeight = this._layoutResult.viewPortHeight;
 		this._actualVisibleWidth = viewPortWidth;
 		this._actualVisibleHeight = viewPortHeight;
-		this._actualMinVisibleWidth = viewPortWidth;
-		this._actualMinVisibleHeight = viewPortHeight;
+		this._actualMinVisibleWidth = this._layoutResult.contentMinWidth;
+		this._actualMinVisibleHeight = this._layoutResult.contentMinHeight;
+
+		this._viewPortBackground.x = 0.0;
+		this._viewPortBackground.y = 0.0;
+		this._viewPortBackground.width = Math.max(this.actualWidth, this._actualVisibleWidth);
+		this._viewPortBackground.height = Math.max(this.actualHeight, this._actualVisibleHeight);
 	}
 }

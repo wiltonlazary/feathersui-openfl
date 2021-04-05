@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -13,8 +13,38 @@ import openfl.events.IEventDispatcher;
 /**
 	Interface for collections of hierarchical data, such as trees.
 
+	@event openfl.events.Event.CHANGE
+
+	@event feathers.events.HierarchicalCollectionEvent.ADD_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.REMOVE_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.REPLACE_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.REMOVE_ALL
+
+	@event feathers.events.HierarchicalCollectionEvent.RESET
+
+	@event feathers.events.HierarchicalCollectionEvent.UPDATE_ITEM
+
+	@event feathers.events.HierarchicalCollectionEvent.UPDATE_ALL
+
+	@event feathers.events.HierarchicalCollectionEvent.FILTER_CHANGE
+
+	@event feathers.events.HierarchicalCollectionEvent.SORT_CHANGE
+
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
+@:event(feathers.events.HierarchicalCollectionEvent.ADD_ITEM)
+@:event(feathers.events.HierarchicalCollectionEvent.REMOVE_ITEM)
+@:event(feathers.events.HierarchicalCollectionEvent.REPLACE_ITEM)
+@:event(feathers.events.HierarchicalCollectionEvent.REMOVE_ALL)
+@:event(feathers.events.HierarchicalCollectionEvent.RESET)
+@:event(feathers.events.HierarchicalCollectionEvent.UPDATE_ITEM)
+@:event(feathers.events.HierarchicalCollectionEvent.UPDATE_ALL)
+@:event(feathers.events.HierarchicalCollectionEvent.FILTER_CHANGE)
+@:event(feathers.events.HierarchicalCollectionEvent.SORT_CHANGE)
 interface IHierarchicalCollection<T> extends IEventDispatcher {
 	/**
 		Returns the item at the specified location within the collection.

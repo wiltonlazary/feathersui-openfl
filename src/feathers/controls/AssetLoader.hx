@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -9,7 +9,6 @@
 package feathers.controls;
 
 import feathers.core.FeathersControl;
-import feathers.core.InvalidationFlag;
 import feathers.layout.Measurements;
 import feathers.utils.ScaleUtil;
 import openfl.Assets;
@@ -22,10 +21,12 @@ import openfl.display.StageScaleMode;
 import openfl.errors.SecurityError;
 import openfl.events.Event;
 import openfl.events.IOErrorEvent;
+import openfl.events.ProgressEvent;
 import openfl.events.SecurityErrorEvent;
 import openfl.geom.Rectangle;
 import openfl.net.URLRequest;
 import openfl.utils.AssetType;
+import openfl.utils.Future;
 
 /**
 	Loads and displays an asset using either OpenFL's asset management system or
@@ -36,6 +37,20 @@ import openfl.utils.AssetType;
 	- [`AssetType.IMAGE`](https://api.openfl.org/openfl/utils/AssetType.html#IMAGE)
 	- [`AssetType.MOVIE_CLIP`](https://api.openfl.org/openfl/utils/AssetType.html#MOVIE_CLIP)
 
+	@event openfl.events.Event.COMPLETE Dispatched when `AssetLoader.source`
+	successfully completes loading asynchronously. If `AssetLoader.source` is
+	pre-loaded by `openfl.utils.Assets`, this event will not be dispatched.
+
+	@event openfl.events.ProgressEvent.PROGRESS Dispatched periodically as
+	`AssetLoader.source` loads asynchronously. If `AssetLoader.source` is
+	pre-loaded by `openfl.utils.Assets`, this event will not be dispatched.
+
+	@event openfl.events.IOErrorEvent.IO_ERROR Dispatched if an IO error occurs
+	while loading `AssetLoader.source`.
+
+	@event openfl.events.SecurityErrorEvent.SECURITY_ERROR Dispatched if a
+	security error occurs while loading `AssetLoader.source`.
+
 
 	@see [Tutorial: How to use the AssetLoader component](https://feathersui.com/learn/haxe-openfl/asset-loader/)
 	@see [`openfl.utils.Assets`](https://api.openfl.org/openfl/utils/Assets.html)
@@ -43,6 +58,7 @@ import openfl.utils.AssetType;
 	@since 1.0.0
 **/
 @:event(openfl.events.Event.COMPLETE)
+@:event(openfl.events.ProgressEvent.PROGRESS)
 @:event(openfl.events.IOErrorEvent.IO_ERROR)
 @:event(openfl.events.SecurityErrorEvent.SECURITY_ERROR)
 @:styleContext
@@ -52,13 +68,17 @@ class AssetLoader extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?source:String) {
 		super();
+
+		this.source = source;
 	}
 
 	private var content:DisplayObject;
 	private var loader:Loader;
 	private var _contentMeasurements:Measurements = new Measurements();
+
+	private var _pendingFuture:Future<Dynamic>;
 
 	private var _source:String;
 
@@ -100,11 +120,13 @@ class AssetLoader extends FeathersControl {
 		}
 		this._source = value;
 		if (this._source == null) {
+			this._pendingFuture = null;
 			this.cleanupLoader();
 		} else {
 			if (Assets.exists(this._source, AssetType.IMAGE)) {
 				this.cleanupLoader();
 				if (Assets.isLocal(this._source, AssetType.IMAGE)) {
+					this._pendingFuture = null;
 					var bitmapData = Assets.getBitmapData(this._source);
 					var bitmap = this.createBitmap(bitmapData);
 					this._contentMeasurements.save(bitmap);
@@ -112,7 +134,14 @@ class AssetLoader extends FeathersControl {
 					this.content = bitmap;
 				} else // async
 				{
-					var future = Assets.loadBitmapData(this._source).onComplete((bitmapData:BitmapData) -> {
+					var future = Assets.loadBitmapData(this._source);
+					future.onProgress((progress, total) -> {
+						this.dispatchEvent(new ProgressEvent(ProgressEvent.PROGRESS, false, false, progress, total));
+					}).onComplete(function(bitmapData:BitmapData):Void {
+						if (future != this._pendingFuture) {
+							// cancelled
+							return;
+						}
 						var bitmap = this.createBitmap(bitmapData);
 						this._contentMeasurements.save(bitmap);
 						this.addChild(bitmap);
@@ -122,17 +151,26 @@ class AssetLoader extends FeathersControl {
 					}).onError((event:Dynamic) -> {
 						this.dispatchEvent(new IOErrorEvent(IOErrorEvent.IO_ERROR));
 					});
+					this._pendingFuture = future;
 				}
 			} else if (Assets.exists(this._source, AssetType.MOVIE_CLIP)) {
 				this.cleanupLoader();
 				if (Assets.isLocal(this._source, AssetType.MOVIE_CLIP)) {
+					this._pendingFuture = null;
 					var movieClip = Assets.getMovieClip(this._source);
 					this._contentMeasurements.save(movieClip);
 					this.addChild(movieClip);
 					this.content = movieClip;
 				} else // async
 				{
-					var future = Assets.loadMovieClip(this._source).onComplete((movieClip:MovieClip) -> {
+					var future = Assets.loadMovieClip(this._source);
+					future.onProgress((progress, total) -> {
+						this.dispatchEvent(new ProgressEvent(ProgressEvent.PROGRESS, false, false, progress, total));
+					}).onComplete(function(movieClip:MovieClip):Void {
+						if (future != this._pendingFuture) {
+							// cancelled
+							return;
+						}
 						this._contentMeasurements.save(movieClip);
 						this.addChild(movieClip);
 						this.content = movieClip;
@@ -141,14 +179,16 @@ class AssetLoader extends FeathersControl {
 					}).onError((event:Dynamic) -> {
 						this.dispatchEvent(new IOErrorEvent(IOErrorEvent.IO_ERROR));
 					});
+					this._pendingFuture = future;
 				}
 			} else {
+				this._pendingFuture = null;
 				if (this.loader == null) {
 					this.loader = new Loader();
 					this.loader.contentLoaderInfo.addEventListener(Event.COMPLETE, loader_contentLoaderInfo_completeHandler);
+					this.loader.contentLoaderInfo.addEventListener(ProgressEvent.PROGRESS, loader_contentLoaderInfo_progressHandler);
 					this.loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, loader_contentLoaderInfo_ioErrorHandler);
 					this.loader.contentLoaderInfo.addEventListener(SecurityErrorEvent.SECURITY_ERROR, loader_contentLoaderInfo_securityErrorHandler);
-					this.addChild(this.loader);
 				}
 				try {
 					this.loader.load(new URLRequest(this._source));
@@ -294,7 +334,7 @@ class AssetLoader extends FeathersControl {
 			if (this.content != null) {
 				newMaxWidth = contentWidth * heightScale;
 			} else {
-				newMaxWidth = Math.POSITIVE_INFINITY;
+				newMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -303,7 +343,7 @@ class AssetLoader extends FeathersControl {
 			if (this.content != null) {
 				newMaxHeight = contentHeight * widthScale;
 			} else {
-				newMaxHeight = Math.POSITIVE_INFINITY;
+				newMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -363,9 +403,14 @@ class AssetLoader extends FeathersControl {
 			return;
 		}
 		this.loader.contentLoaderInfo.removeEventListener(Event.COMPLETE, loader_contentLoaderInfo_completeHandler);
+		this.loader.contentLoaderInfo.removeEventListener(ProgressEvent.PROGRESS, loader_contentLoaderInfo_progressHandler);
 		this.loader.contentLoaderInfo.removeEventListener(IOErrorEvent.IO_ERROR, loader_contentLoaderInfo_ioErrorHandler);
 		this.loader.contentLoaderInfo.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, loader_contentLoaderInfo_securityErrorHandler);
 		this.loader = null;
+	}
+
+	private function loader_contentLoaderInfo_progressHandler(event:ProgressEvent):Void {
+		this.dispatchEvent(event);
 	}
 
 	private function loader_contentLoaderInfo_ioErrorHandler(event:IOErrorEvent):Void {
@@ -377,6 +422,7 @@ class AssetLoader extends FeathersControl {
 	}
 
 	private function loader_contentLoaderInfo_completeHandler(event:Event):Void {
+		this.addChild(this.loader);
 		this.content = this.loader;
 		this._contentMeasurements.save(this.content);
 		this.setInvalid(LAYOUT);

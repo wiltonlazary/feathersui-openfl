@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,19 +8,24 @@
 
 package feathers.themes.steel;
 
+import feathers.themes.steel.components.SteelAlertStyles;
 import feathers.themes.steel.components.SteelApplicationStyles;
+import feathers.themes.steel.components.SteelButtonBarStyles;
 import feathers.themes.steel.components.SteelButtonStyles;
 import feathers.themes.steel.components.SteelCalendarGridStyles;
 import feathers.themes.steel.components.SteelCalloutStyles;
 import feathers.themes.steel.components.SteelCheckStyles;
 import feathers.themes.steel.components.SteelComboBoxStyles;
 import feathers.themes.steel.components.SteelDrawerStyles;
+import feathers.themes.steel.components.SteelFormItemStyles;
+import feathers.themes.steel.components.SteelFormStyles;
 import feathers.themes.steel.components.SteelGridViewStyles;
 import feathers.themes.steel.components.SteelGroupListViewStyles;
 import feathers.themes.steel.components.SteelHDividedBoxStyles;
 import feathers.themes.steel.components.SteelHProgressBarStyles;
 import feathers.themes.steel.components.SteelHScrollBarStyles;
 import feathers.themes.steel.components.SteelHSliderStyles;
+import feathers.themes.steel.components.SteelHeaderStyles;
 import feathers.themes.steel.components.SteelItemRendererStyles;
 import feathers.themes.steel.components.SteelLabelStyles;
 import feathers.themes.steel.components.SteelLayoutGroupItemRendererStyles;
@@ -65,16 +70,21 @@ class SteelTheme extends BaseSteelTheme {
 	public function new(?themeColor:Int, ?darkThemeColor:Int) {
 		super(themeColor, darkThemeColor);
 
+		SteelAlertStyles.initialize(this);
 		SteelApplicationStyles.initialize(this);
 		SteelButtonStyles.initialize(this);
+		SteelButtonBarStyles.initialize(this);
 		SteelCalendarGridStyles.initialize(this);
 		SteelCalloutStyles.initialize(this);
 		SteelCheckStyles.initialize(this);
 		SteelComboBoxStyles.initialize(this);
 		SteelDrawerStyles.initialize(this);
+		SteelFormStyles.initialize(this);
+		SteelFormItemStyles.initialize(this);
 		SteelGridViewStyles.initialize(this);
 		SteelGroupListViewStyles.initialize(this);
 		SteelHDividedBoxStyles.initialize(this);
+		SteelHeaderStyles.initialize(this);
 		SteelHProgressBarStyles.initialize(this);
 		SteelHScrollBarStyles.initialize(this);
 		SteelHSliderStyles.initialize(this);

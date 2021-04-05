@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -161,7 +161,7 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 		is customized:
 
 		```hx
-		button.secondaryTextFormat = new TextFormat("Helvetica", 20, 0xcc0000);
+		itemRenderer.secondaryTextFormat = new TextFormat("Helvetica", 20, 0xcc0000);
 		```
 
 		@see `ToggleButton.secondaryText`
@@ -172,15 +172,15 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 	public var secondaryTextFormat:AbstractTextFormat = null;
 
 	/**
-		The font styles used to render the button's secondary text when the
-		button is disabled.
+		The font styles used to render the item renderer's secondary text when
+		the item renderer is disabled.
 
-		In the following example, the button's secondary disabled text
+		In the following example, the item renderer's secondary disabled text
 		formatting is customized:
 
 		```hx
-		button.enabled = false;
-		button.disabledSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		itemRenderer.enabled = false;
+		itemRenderer.disabledSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
 		```
 
 		The next example sets a disabled secondary text format, but also
@@ -188,8 +188,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 		that will be used instead of the disabled secondary text format:
 
 		```hx
-		button.disabledSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
-		button.setSecondaryTextFormatForState(ToggleButtonState.DISABLED(true), new TextFormat("Helvetica", 20, 0xff0000));
+		itemRenderer.disabledSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		itemRenderer.setSecondaryTextFormatForState(ToggleButtonState.DISABLED(true), new TextFormat("Helvetica", 20, 0xff0000));
 		```
 
 		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
@@ -205,15 +205,15 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 	public var disabledSecondaryTextFormat:AbstractTextFormat = null;
 
 	/**
-		The font styles used to render the button's secondary text when the
-		button is selected.
+		The font styles used to render the item renderer's secondary text when
+		the item renderer is selected.
 
-		In the following example, the button's selected secondary text
+		In the following example, the item renderer's selected secondary text
 		formatting is customized:
 
 		```hx
-		button.selected = true;
-		button.selectedSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
+		itemRenderer.selected = true;
+		itemRenderer.selectedSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
 		```
 
 		The next example sets a selected secondary text format, but also
@@ -221,8 +221,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 		will be used instead of the selected secondary text format:
 
 		```hx
-		button.selectedSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
-		button.setSecondaryTextFormatForState(ToggleButtonState.DOWN(true), new TextFormat("Helvetica", 20, 0xcc0000));
+		itemRenderer.selectedSecondaryTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
+		itemRenderer.setSecondaryTextFormatForState(ToggleButtonState.DOWN(true), new TextFormat("Helvetica", 20, 0xcc0000));
 		```
 
 		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
@@ -262,7 +262,7 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 	private var _stateToSecondaryTextFormat:Map<ToggleButtonState, AbstractTextFormat> = new Map();
 
 	/**
-		Gets the secondary text format to be used by the button when its
+		Gets the secondary text format to be used by the item renderer when its
 		`currentState` property matches the specified state value.
 
 		If a secondary text format is not defined for a specific state, returns
@@ -280,7 +280,7 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 	}
 
 	/**
-		Set the secondary text format to be used by the button when its
+		Set the secondary text format to be used by the item renderer when its
 		`currentState` property matches the specified state value.
 
 		If a secondary text format is not defined for a specific state, the
@@ -475,7 +475,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 		calculatedHeight -= (this.paddingTop + this.paddingBottom);
 		if (this._currentIcon != null) {
 			var adjustedGap = this.gap;
-			if (adjustedGap == Math.POSITIVE_INFINITY) {
+			// Math.POSITIVE_INFINITY bug workaround
+			if (adjustedGap == (1.0 / 0.0)) {
 				adjustedGap = this.minGap;
 			}
 			if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
@@ -487,7 +488,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 		}
 		if (this.secondaryTextField != null) {
 			var adjustedGap = this.gap;
-			if (adjustedGap == Math.POSITIVE_INFINITY) {
+			// Math.POSITIVE_INFINITY bug workaround
+			if (adjustedGap == (1.0 / 0.0)) {
 				adjustedGap = this.minGap;
 			}
 			calculatedHeight -= (this._secondaryTextMeasuredHeight + adjustedGap);
@@ -510,7 +512,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 
 	override private function measureContentWidth():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var contentWidth = this._text != null ? this._textMeasuredWidth : 0.0;
@@ -532,7 +535,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 
 	override private function measureContentHeight():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 
@@ -558,7 +562,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 
 	override private function measureContentMinWidth():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var contentMinWidth = this._text != null ? this._textMeasuredWidth : 0.0;
@@ -580,7 +585,8 @@ class ItemRenderer extends ToggleButton implements ILayoutIndexObject implements
 
 	override private function measureContentMinHeight():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var contentMinHeight = this._text != null ? this._textMeasuredHeight : 0.0;

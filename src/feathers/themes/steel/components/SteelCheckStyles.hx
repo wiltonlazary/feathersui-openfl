@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -78,6 +78,8 @@ class SteelCheckStyles {
 					var checkMark = new Shape();
 					checkMark.graphics.beginFill(theme.textColor);
 					checkMark.graphics.drawRect(-1.0, -8.0, 3.0, 14.0);
+					checkMark.graphics.endFill();
+					checkMark.graphics.beginFill(theme.textColor);
 					checkMark.graphics.drawRect(-5.0, 3.0, 5.0, 3.0);
 					checkMark.graphics.endFill();
 					checkMark.rotation = 45.0;
@@ -96,6 +98,8 @@ class SteelCheckStyles {
 					var disabledCheckMark = new Shape();
 					disabledCheckMark.graphics.beginFill(theme.disabledTextColor);
 					disabledCheckMark.graphics.drawRect(-1.0, -8.0, 3.0, 14.0);
+					disabledCheckMark.graphics.endFill();
+					disabledCheckMark.graphics.beginFill(theme.disabledTextColor);
 					disabledCheckMark.graphics.drawRect(-5.0, 3.0, 5.0, 3.0);
 					disabledCheckMark.graphics.endFill();
 					disabledCheckMark.rotation = 45.0;

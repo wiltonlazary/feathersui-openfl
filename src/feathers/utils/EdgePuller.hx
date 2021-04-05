@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -28,6 +28,18 @@ import openfl.ui.Multitouch;
 
 /**
 	Utility that provides a pull gesture with touch events.
+
+	@event openfl.events.Event.OPEN
+
+	@event openfl.events.Event.CLOSE
+
+	@event feathers.events.FeathersEvent.OPENING
+
+	@event feathers.events.FeathersEvent.CLOSING
+
+	@event openfl.events.Event.CANCEL
+
+	@event openfl.events.Event.CHANGE
 
 	@since 1.0.0
 **/
@@ -657,7 +669,7 @@ class EdgePuller extends EventDispatcher {
 				this._startPullDistance = this._pullDistance;
 				this._targetPullDistance = targetPosition;
 				if (this._snapDuration > 0.0) {
-					var tween = Actuate.update((pullDistance : Float) -> {
+					var tween = Actuate.update((pullDistance:Float) -> {
 						// use the setter
 						this.setPullDistance(pullDistance);
 					}, this._snapDuration, [this._startPullDistance], [this._targetPullDistance],

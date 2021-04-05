@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -37,6 +37,21 @@ import openfl.ui.Multitouch;
 /**
 	A container that displays primary `content` in the center with a `drawer`
 	that opens and closes from one of the four edges of the container.
+
+	@event openfl.events.Event.OPEN Dispatched when the drawer has completely
+	opened.
+
+	@event openfl.events.Event.CLOSE Dispatched when the drawer has completely
+	closed.
+
+	@event openfl.events.Event.CANCEL Dispatched when an open or close action
+	is cancelled before completing.
+
+	@event feathers.events.FeathersEvent.OPENING Dispatched when the drawer
+	starts opening. This event may be cancelled.
+
+	@event feathers.events.FeathersEvent.CLOSING Dispatched when the drawer
+	starts closing. This event may be cancelled.
 
 	@see [Tutorial: How to use the Drawer component](https://feathersui.com/learn/haxe-openfl/drawer/)
 
@@ -303,6 +318,75 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 	private var _clickStartX = 0.0;
 	private var _clickStartY = 0.0;
 
+	private var _clickOverlayToClose:Bool = true;
+
+	/**
+		Determines if the drawer may be closed by clicking the modal overlay.
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var clickOverlayToClose(get, set):Bool;
+
+	private function get_clickOverlayToClose():Bool {
+		return this._clickOverlayToClose;
+	}
+
+	private function set_clickOverlayToClose(value:Bool):Bool {
+		this._clickOverlayToClose = value;
+		return this._clickOverlayToClose;
+	}
+
+	private var _swipeCloseEnabled:Bool = true;
+
+	/**
+		Determines if the drawer may be closed by swiping it.
+
+		@see `Drawer.swipeOpenEnabled`
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var swipeCloseEnabled(get, set):Bool;
+
+	private function get_swipeCloseEnabled():Bool {
+		return this._swipeCloseEnabled;
+	}
+
+	private function set_swipeCloseEnabled(value:Bool):Bool {
+		if (this._swipeCloseEnabled == value) {
+			return this._swipeCloseEnabled;
+		}
+		this._swipeCloseEnabled = value;
+		this.setInvalid(STATE);
+		return this._swipeCloseEnabled;
+	}
+
+	private var _swipeOpenEnabled:Bool = true;
+
+	/**
+		Determines if the drawer may be opened by swiping it.
+
+		@see `Drawer.swipeCloseEnabled`
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var swipeOpenEnabled(get, set):Bool;
+
+	private function get_swipeOpenEnabled():Bool {
+		return this._swipeOpenEnabled;
+	}
+
+	private function set_swipeOpenEnabled(value:Bool):Bool {
+		if (this._swipeOpenEnabled == value) {
+			return this._swipeOpenEnabled;
+		}
+		this._swipeOpenEnabled = value;
+		this.setInvalid(STATE);
+		return this._swipeOpenEnabled;
+	}
+
 	private function initializeDrawerTheme():Void {
 		SteelDrawerStyles.initialize();
 	}
@@ -342,7 +426,7 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 			this.refreshOverlaySkin();
 		}
 
-		if (stateInvalid) {
+		if (stateInvalid || dataInvalid) {
 			this.refreshEnabled();
 		}
 
@@ -371,7 +455,7 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 			var bottomRight = this.globalToLocal(new Point(this.stage.stageWidth, this.stage.stageHeight));
 			stageWidth = bottomRight.x - topLeft.x;
 			stageHeight = bottomRight.y - topLeft.y;
-			return this.saveMeasurements(stageWidth, stageHeight, stageWidth, stageHeight, Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY);
+			return this.saveMeasurements(stageWidth, stageHeight, stageWidth, stageHeight);
 		}
 
 		var measureContent:IMeasureObject = null;
@@ -440,7 +524,9 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 	}
 
 	private function refreshEnabled():Void {
-		this._edgePuller.enabled = this._enabled && this._drawer != null;
+		this._edgePuller.enabled = this._enabled
+			&& this._drawer != null
+			&& ((this._opened && this._swipeCloseEnabled) || (!this._opened && this._swipeOpenEnabled));
 		if (Std.is(this._content, IUIControl)) {
 			cast(this._content, IUIControl).enabled = this._enabled;
 		}
@@ -652,6 +738,7 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 	private function drawer_edgePuller_openHandler(event:Event):Void {
 		this._opened = true;
 		FeathersEvent.dispatch(this, Event.OPEN);
+		this.setInvalid(STATE);
 	}
 
 	private function drawer_edgePuller_closeHandler(event:Event):Void {
@@ -662,6 +749,7 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 		}
 		this._opened = false;
 		FeathersEvent.dispatch(this, Event.CLOSE);
+		this.setInvalid(STATE);
 	}
 
 	private function drawer_edgePuller_cancelHandler(event:Event):Void {
@@ -673,6 +761,7 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 			}
 		}
 		FeathersEvent.dispatch(this, Event.CANCEL);
+		this.setInvalid(STATE);
 	}
 
 	private function drawer_edgePuller_changeHandler(event:Event):Void {
@@ -709,7 +798,7 @@ class Drawer extends FeathersControl implements IOpenCloseToggle {
 	}
 
 	private function drawer_overlaySkin_clickHandler(event:MouseEvent):Void {
-		if (!this._enabled) {
+		if (!this._enabled || !this._clickOverlayToClose) {
 			return;
 		}
 		var movementX = Math.abs(event.localX - this._clickStartX);

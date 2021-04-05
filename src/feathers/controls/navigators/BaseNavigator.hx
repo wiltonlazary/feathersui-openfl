@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -30,12 +30,23 @@ import feathers.core.FeathersControl;
 /**
 	Base class for navigator components.
 
+	@event openfl.events.Event.CLEAR
+
+	@event openfl.events.Event.CHANGE
+
+	@event feathers.events.FeathersEvent.TRANSITION_START
+
+	@event feathers.events.FeathersEvent.TRANSITION_COMPLETE
+
+	@event feathers.events.FeathersEvent.TRANSITION_CANCEL
+
 	@since 1.0.0
 **/
 @:event(openfl.events.Event.CLEAR)
 @:event(openfl.events.Event.CHANGE)
 @:event(feathers.events.FeathersEvent.TRANSITION_START)
 @:event(feathers.events.FeathersEvent.TRANSITION_COMPLETE)
+@:event(feathers.events.FeathersEvent.TRANSITION_CANCEL)
 class BaseNavigator extends FeathersControl {
 	private static function defaultTransition(oldView:DisplayObject, newView:DisplayObject):IEffectContext {
 		return new NoOpEffectContext(oldView);
@@ -338,7 +349,7 @@ class BaseNavigator extends FeathersControl {
 				} else if (this._activeItemView != null) {
 					newMaxWidth = this._activeItemView.width;
 				} else {
-					newMaxWidth = Math.POSITIVE_INFINITY;
+					newMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 				}
 				newMaxWidth += this.rightContentOffset + this.leftContentOffset;
 			} else {
@@ -354,7 +365,7 @@ class BaseNavigator extends FeathersControl {
 				} else if (this._activeItemView != null) {
 					newMaxHeight = this._activeItemView.height;
 				} else {
-					newMaxHeight = Math.POSITIVE_INFINITY;
+					newMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 				}
 				newMaxHeight += this.topContentOffset + this.bottomContentOffset;
 			} else {
@@ -642,7 +653,7 @@ class BaseNavigator extends FeathersControl {
 
 		this.setInvalid(LAYOUT);
 
-		if (this.stage.focus == null || this.stage.focus.stage == null) {
+		if (this.stage != null && (this.stage.focus == null || this.stage.focus.stage == null)) {
 			if (Std.is(activeItemView, InteractiveObject)) {
 				this.stage.focus = cast(activeItemView, InteractiveObject);
 			}
@@ -683,7 +694,7 @@ class BaseNavigator extends FeathersControl {
 
 		this.setInvalid(LAYOUT);
 
-		if (this.stage.focus == null || this.stage.focus.stage == null) {
+		if (this.stage != null && (this.stage.focus == null || this.stage.focus.stage == null)) {
 			if (Std.is(this._activeItemView, InteractiveObject)) {
 				this.stage.focus = cast(this._activeItemView, InteractiveObject);
 			}

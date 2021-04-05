@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -13,8 +13,11 @@ import feathers.core.IUIControl;
 /**
 	A UI component that displays a range of values from a minimum to a maximum.
 
+	@event openfl.events.Event.CHANGE Dispatched when `IRange.value` changes.
+
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.CHANGE)
 interface IRange extends IUIControl {
 	/**
 		The current numeric value of the range.

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -9,13 +9,13 @@
 package feathers.controls;
 
 import feathers.core.IFocusExtras;
-import feathers.utils.MeasurementsUtil;
-import feathers.core.InvalidationFlag;
 import feathers.core.IMeasureObject;
-import feathers.themes.steel.components.SteelPanelStyles;
-import openfl.display.DisplayObject;
 import feathers.core.IUIControl;
 import feathers.core.IValidating;
+import feathers.layout.Measurements;
+import feathers.themes.steel.components.SteelPanelStyles;
+import openfl.display.DisplayObject;
+import openfl.events.Event;
 
 /**
 	A container with a header on top and a footer on the bottom, with a region
@@ -39,6 +39,10 @@ class Panel extends ScrollContainer implements IFocusExtras {
 		super();
 	}
 
+	private var _ignoreHeaderResize:Bool = false;
+
+	private var _headerMeasurements:Measurements = null;
+
 	private var _header:DisplayObject = null;
 
 	/**
@@ -58,17 +62,34 @@ class Panel extends ScrollContainer implements IFocusExtras {
 			return this._header;
 		}
 		if (this._header != null) {
+			this._header.removeEventListener(Event.RESIZE, panel_header_resizeHandler);
 			this._focusExtrasBefore.remove(this._header);
 			this.removeRawChild(this._header);
 		}
 		this._header = value;
 		if (this._header != null) {
 			this._focusExtrasBefore.push(this._header);
-			this.addRawChild(this._header);
+			var index = (this._currentBackgroundSkin != null) ? (this.getRawChildIndex(this._currentBackgroundSkin) + 1) : 0;
+			this.addRawChildAt(this._header, index);
+			if (Std.is(this._header, IUIControl)) {
+				cast(this._header, IUIControl).initializeNow();
+			}
+			if (this._headerMeasurements == null) {
+				this._headerMeasurements = new Measurements(this._header);
+			} else {
+				this._headerMeasurements.save(this._header);
+			}
+			this._header.addEventListener(Event.RESIZE, panel_header_resizeHandler, false, 0, true);
+		} else {
+			this._headerMeasurements = null;
 		}
 		this.setInvalid(LAYOUT);
 		return this._header;
 	}
+
+	private var _ignoreFooterResize:Bool = false;
+
+	private var _footerMeasurements:Measurements = null;
 
 	private var _footer:DisplayObject = null;
 
@@ -89,6 +110,7 @@ class Panel extends ScrollContainer implements IFocusExtras {
 			return this._footer;
 		}
 		if (this._footer != null) {
+			this._header.removeEventListener(Event.RESIZE, panel_header_resizeHandler);
 			this._focusExtrasAfter.remove(this._footer);
 			this.removeRawChild(this._footer);
 		}
@@ -96,6 +118,17 @@ class Panel extends ScrollContainer implements IFocusExtras {
 		if (this._footer != null) {
 			this._focusExtrasAfter.push(this._footer);
 			this.addRawChild(this._footer);
+			if (Std.is(this._footer, IUIControl)) {
+				cast(this._footer, IUIControl).initializeNow();
+			}
+			if (this._footerMeasurements == null) {
+				this._footerMeasurements = new Measurements(this._footer);
+			} else {
+				this._footerMeasurements.save(this._footer);
+			}
+			this._footer.addEventListener(Event.RESIZE, panel_footer_resizeHandler, false, 0, true);
+		} else {
+			this._footerMeasurements = null;
 		}
 		this.setInvalid(LAYOUT);
 		return this._footer;
@@ -131,12 +164,25 @@ class Panel extends ScrollContainer implements IFocusExtras {
 		this._ignoreChildChangesButSetFlags = false;
 
 		super.update();
+
+		var oldIgnoreHeaderResize = this._ignoreHeaderResize;
+		this._ignoreHeaderResize = true;
 		this.layoutHeader();
+		this._ignoreHeaderResize = oldIgnoreHeaderResize;
+
+		var oldIgnoreFooterResize = this._ignoreFooterResize;
+		this._ignoreFooterResize = true;
 		this.layoutFooter();
+		this._ignoreFooterResize = oldIgnoreFooterResize;
 	}
 
 	override private function calculateViewPortOffsets(forceScrollBars:Bool, useActualBounds:Bool):Void {
 		if (this._header != null) {
+			var oldIgnoreHeaderResize = this._ignoreHeaderResize;
+			this._ignoreHeaderResize = true;
+			if (this._headerMeasurements != null) {
+				this._headerMeasurements.restore(this._header);
+			}
 			if (Std.is(this._header, IValidating)) {
 				cast(this._header, IValidating).validateNow();
 			}
@@ -146,8 +192,14 @@ class Panel extends ScrollContainer implements IFocusExtras {
 				var measureHeader = cast(this._header, IMeasureObject);
 				this.chromeMeasuredMinWidth = Math.max(this.chromeMeasuredMinWidth, measureHeader.minWidth);
 			}
+			this._ignoreHeaderResize = oldIgnoreHeaderResize;
 		}
 		if (this._footer != null) {
+			var oldIgnoreFooterResize = this._ignoreFooterResize;
+			this._ignoreFooterResize = true;
+			if (this._footerMeasurements != null) {
+				this._footerMeasurements.restore(this._footer);
+			}
 			if (Std.is(this._footer, IValidating)) {
 				cast(this._footer, IValidating).validateNow();
 			}
@@ -157,6 +209,7 @@ class Panel extends ScrollContainer implements IFocusExtras {
 				var measureFooter = cast(this._footer, IMeasureObject);
 				this.chromeMeasuredMinWidth = Math.max(this.chromeMeasuredMinWidth, measureFooter.minWidth);
 			}
+			this._ignoreFooterResize = oldIgnoreFooterResize;
 		}
 		super.calculateViewPortOffsets(forceScrollBars, useActualBounds);
 	}
@@ -183,5 +236,29 @@ class Panel extends ScrollContainer implements IFocusExtras {
 			cast(this._footer, IValidating).validateNow();
 		}
 		this._footer.y = this.actualHeight - this._footer.height - this.paddingBottom;
+	}
+
+	private function panel_header_resizeHandler(event:Event):Void {
+		if (this._ignoreHeaderResize) {
+			return;
+		}
+		if (this._headerMeasurements != null) {
+			// if the header resizes outside of the panel's validation cycle,
+			// then its new measurements should replace the original
+			this._headerMeasurements.save(this._header);
+		}
+		this.setInvalid(SIZE);
+	}
+
+	private function panel_footer_resizeHandler(event:Event):Void {
+		if (this._ignoreFooterResize) {
+			return;
+		}
+		if (this._footerMeasurements != null) {
+			// if the footer resizes outside of the panel's validation cycle,
+			// then its new measurements should replace the original
+			this._footerMeasurements.save(this._footer);
+		}
+		this.setInvalid(SIZE);
 	}
 }

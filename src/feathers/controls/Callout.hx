@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,6 +10,7 @@ package feathers.controls;
 
 import feathers.core.FeathersControl;
 import feathers.core.IMeasureObject;
+import feathers.core.InvalidationFlag;
 import feathers.core.IUIControl;
 import feathers.core.IValidating;
 import feathers.core.PopUpManager;
@@ -52,6 +53,8 @@ import openfl.ui.Multitouch;
 	}
 	button.addEventListener(TriggerEvent.TRIGGER, button_triggerHandler);
 	```
+
+	@event openfl.events.Event.CLOSE Dispatched when the callout closes.
 
 	@see [Tutorial: How to use the Callout component](https://feathersui.com/learn/haxe-openfl/callout/)
 	@see `feathers.controls.TextCallout`
@@ -271,9 +274,13 @@ class Callout extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?content:DisplayObject) {
 		initializeCalloutTheme();
+
 		super();
+
+		this.content = content;
+
 		this.addEventListener(Event.ADDED_TO_STAGE, callout_addedToStageHandler);
 		this.addEventListener(Event.REMOVED_FROM_STAGE, callout_removedFromStageHandler);
 	}
@@ -644,6 +651,23 @@ class Callout extends FeathersControl {
 		}
 	}
 
+	/**
+		Sets all four padding properties to the same value.
+
+		@see `Callout.paddingTop`
+		@see `Callout.paddingRight`
+		@see `Callout.paddingBottom`
+		@see `Callout.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
 	private function initializeCalloutTheme():Void {
 		SteelCalloutStyles.initialize();
 	}
@@ -716,7 +740,7 @@ class Callout extends FeathersControl {
 				maxWidthWithStage = stageMaxWidth;
 			}
 		} else {
-			maxWidthWithStage = Math.POSITIVE_INFINITY;
+			maxWidthWithStage = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		var maxHeightWithStage = this.explicitMaxHeight;
 		if (this.stage != null) {
@@ -725,7 +749,7 @@ class Callout extends FeathersControl {
 				maxHeightWithStage = stageMaxHeight;
 			}
 		} else {
-			maxHeightWithStage = Math.POSITIVE_INFINITY;
+			maxHeightWithStage = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 
 		if (this.backgroundSkin != null) {
@@ -919,22 +943,26 @@ class Callout extends FeathersControl {
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
 			this._backgroundSkinMeasurements = null;
 			return;
 		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
 		}
 		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
+			this._backgroundSkinMeasurements = new Measurements(skin);
 		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
+			this._backgroundSkinMeasurements.save(skin);
 		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
 		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		this.addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {

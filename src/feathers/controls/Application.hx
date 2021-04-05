@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -42,6 +42,22 @@ import openfl.display.StageScaleMode;
 **/
 @:styleContext
 class Application extends LayoutGroup implements IFocusManagerAware {
+	private static var _topLevelApplication:Application;
+
+	/**
+		The first `Application` instance created is the top-level application.
+
+		Feathers UI does not require developers to use the `Application`
+		component, so this value may be `null` in some projects.
+
+		@since 1.0.0
+	**/
+	public static var topLevelApplication(get, never):Application;
+
+	private static function get_topLevelApplication():Application {
+		return _topLevelApplication;
+	}
+
 	private static function defaultPopUpContainerFactory():DisplayObjectContainer {
 		return new Sprite();
 	}
@@ -52,6 +68,9 @@ class Application extends LayoutGroup implements IFocusManagerAware {
 		@since 1.0.0
 	**/
 	public function new() {
+		if (Application._topLevelApplication == null) {
+			Application._topLevelApplication = this;
+		}
 		initializeApplicationTheme();
 
 		super();
@@ -153,9 +172,7 @@ class Application extends LayoutGroup implements IFocusManagerAware {
 			}
 			#end
 			#else
-			if (DeviceUtil.isDesktop()) {
-				result = this.stage.contentsScaleFactor;
-			} else {
+			if (!DeviceUtil.isDesktop()) {
 				if (this._scaler == null) {
 					this._scaler = new ScreenDensityScaleCalculator();
 					this._scaler.addScaleForDensity(120, 0.75); // ldpi
@@ -173,6 +190,9 @@ class Application extends LayoutGroup implements IFocusManagerAware {
 	}
 
 	private function refreshDimensions():Void {
+		if (this.stage == null) {
+			return;
+		}
 		this._scaleFactor = this.getScaleFactor();
 		this.scaleX = this._scaleFactor;
 		this.scaleY = this._scaleFactor;
@@ -189,8 +209,10 @@ class Application extends LayoutGroup implements IFocusManagerAware {
 		}
 		this.height = appHeight;
 
-		this._popUpContainer.scaleX = this._scaleFactor;
-		this._popUpContainer.scaleY = this._scaleFactor;
+		if (this._popUpContainer != null) {
+			this._popUpContainer.scaleX = this._scaleFactor;
+			this._popUpContainer.scaleY = this._scaleFactor;
+		}
 	}
 
 	private function preparePopUpManager():Void {

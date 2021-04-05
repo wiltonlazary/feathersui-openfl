@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,6 +8,7 @@
 
 package feathers.core;
 
+import feathers.controls.IGroupedToggle;
 import feathers.controls.supportClasses.IViewPort;
 import feathers.core.IFocusContainer;
 import feathers.core.IFocusManager;
@@ -22,11 +23,12 @@ import openfl.errors.IllegalOperationError;
 import openfl.events.Event;
 import openfl.events.FocusEvent;
 import openfl.events.MouseEvent;
-import openfl.system.Capabilities;
 import openfl.text.TextField;
 import openfl.ui.Keyboard;
 #if (html5 && openfl < "9.0.0")
 import openfl.events.KeyboardEvent;
+#else
+import openfl.system.Capabilities;
 #end
 
 /**
@@ -64,7 +66,7 @@ class DefaultFocusManager implements IFocusManager {
 		if (this._focus != null && this._root.stage != null) {
 			if (this._enabled) {
 				this._focus.showFocus(true);
-				this._root.stage.focus = cast(this._focus, InteractiveObject);
+				this.setStageFocus(cast(this._focus, InteractiveObject));
 			} else {
 				this._focus.showFocus(false);
 				if (this._root.stage.focus == cast(this._focus, InteractiveObject)) {
@@ -125,6 +127,10 @@ class DefaultFocusManager implements IFocusManager {
 	private function get_focusPane():DisplayObjectContainer {
 		if (this._focusPane == null) {
 			this._focusPane = new Sprite();
+			this._focusPane.mouseEnabled = false;
+			this._focusPane.mouseChildren = false;
+			this._focusPane.tabEnabled = false;
+			this._focusPane.tabChildren = false;
 			PopUpManager.forStage(this._root.stage).addPopUp(this._focusPane, false, false);
 		}
 		return this._focusPane;
@@ -148,7 +154,7 @@ class DefaultFocusManager implements IFocusManager {
 				// in some cases, the stage focus seems to get cleared, so even
 				// though our focus hasn't changed, we should still pass it to the
 				// stage
-				this._root.stage.focus = cast(value, InteractiveObject);
+				this.setStageFocus(cast(value, InteractiveObject));
 			}
 			return this._focus;
 		}
@@ -165,7 +171,7 @@ class DefaultFocusManager implements IFocusManager {
 			}
 		}
 		if (this._enabled && this._root.stage != null) {
-			this._root.stage.focus = cast(value, InteractiveObject);
+			this.setStageFocus(cast(value, InteractiveObject));
 		}
 		return this._focus;
 	}
@@ -468,7 +474,20 @@ class DefaultFocusManager implements IFocusManager {
 		if (Std.is(child, IFocusObject)) {
 			var childWithFocus = cast(child, IFocusObject);
 			if (this.isValidFocus(childWithFocus)) {
-				return childWithFocus;
+				if (!Std.is(childWithFocus, IGroupedToggle)) {
+					return childWithFocus;
+				}
+				var toggleGroup = cast(childWithFocus, IGroupedToggle).toggleGroup;
+				if (toggleGroup == null) {
+					return childWithFocus;
+				}
+				if (Std.is(toggleGroup.selectedItem, IFocusObject)) {
+					var selectedItem = cast(toggleGroup.selectedItem, IFocusObject);
+					if (this._focus != selectedItem) {
+						// don't let it keep the same focus
+						return selectedItem;
+					}
+				}
 			}
 		}
 		return null;
@@ -478,9 +497,23 @@ class DefaultFocusManager implements IFocusManager {
 		if (Std.is(child, IFocusObject)) {
 			var childWithFocus = cast(child, IFocusObject);
 			if (this.isValidFocus(childWithFocus)) {
-				return childWithFocus;
+				if (!Std.is(childWithFocus, IGroupedToggle)) {
+					return childWithFocus;
+				}
+				var toggleGroup = cast(childWithFocus, IGroupedToggle).toggleGroup;
+				if (toggleGroup == null) {
+					return childWithFocus;
+				}
+				if (Std.is(toggleGroup.selectedItem, IFocusObject)) {
+					var selectedItem = cast(toggleGroup.selectedItem, IFocusObject);
+					if (this._focus != selectedItem) {
+						// don't let it keep the same focus
+						return selectedItem;
+					}
+				}
 			}
 		}
+
 		var childContainer = Std.downcast(child, DisplayObjectContainer);
 		if (childContainer != null) {
 			var findNextChildContainer = !Std.is(childContainer, IFocusObject);
@@ -496,6 +529,16 @@ class DefaultFocusManager implements IFocusManager {
 			}
 		}
 		return null;
+	}
+
+	private function setStageFocus(value:InteractiveObject):Void {
+		if (Std.is(value, IStageFocusDelegate)) {
+			var newFocusTarget = cast(value, IStageFocusDelegate).stageFocusTarget;
+			if (newFocusTarget != null) {
+				value = newFocusTarget;
+			}
+		}
+		this._root.stage.focus = value;
 	}
 
 	private function handleRootAddedToStage(root:DisplayObject):Void {
@@ -531,11 +574,11 @@ class DefaultFocusManager implements IFocusManager {
 	}
 
 	private function defaultFocusManager_root_addedToStageHandler(event:Event):Void {
-		this.handleRootAddedToStage(cast(event.currentTarget, DisplayObjectContainer));
+		this.handleRootAddedToStage(cast(event.currentTarget, DisplayObject));
 	}
 
 	private function defaultFocusManager_root_removedFromStageHandler(event:Event):Void {
-		this.handleRootRemovedFromStage(cast(event.currentTarget, DisplayObjectContainer));
+		this.handleRootRemovedFromStage(cast(event.currentTarget, DisplayObject));
 	}
 
 	private function shouldBeManaged(target:DisplayObject):Bool {
@@ -691,7 +734,7 @@ class DefaultFocusManager implements IFocusManager {
 		}
 		if (this._focus != null && this._root.stage != null) {
 			if (this.isValidFocus(this._focus)) {
-				this._root.stage.focus = cast(this._focus, InteractiveObject);
+				this.setStageFocus(cast(this._focus, InteractiveObject));
 				this._focus.showFocus(true);
 			} else {
 				// if it's no longer valid focus, for some reason, clear it

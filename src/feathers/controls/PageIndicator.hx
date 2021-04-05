@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -56,6 +56,9 @@ import openfl.ui.Multitouch;
 	});
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when
+	`PageIndicator.selectedIndex` changes.
+
 	@see [Tutorial: How to use the PageIndicator component](https://feathersui.com/learn/haxe-openfl/page-indicator/)
 	@see `feathers.controls.navigators.PageNavigator`
 
@@ -69,6 +72,9 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 
 	/**
 		The variant used to style the toggle button child components in a theme.
+
+		To override this default variant, set the
+		`PageIndicator.customToggleButtonVariant` property.
 
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
@@ -153,7 +159,11 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 	private var _previousCustomToggleButtonVariant:String = null;
 
 	/**
-		A custom variant to set on all toggle buttons.
+		A custom variant to set on all toggle buttons, instead of
+		`PageIndicator.CHILD_VARIANT_TOGGLE_BUTTON`.
+
+		The `customToggleButtonVariant` will be not be used if the result of
+		`toggleButtonRecycler.create()` already has a variant set.
 
 		@see `PageIndicator.CHILD_VARIANT_TOGGLE_BUTTON`
 
@@ -328,6 +338,7 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		}
 		var oldIgnoreChildChanges = this._ignoreChildChanges;
 		this._ignoreChildChanges = true;
+		this._layoutResult.reset();
 		this.layout.layout(cast this.activeToggleButtons, this._layoutMeasurements, this._layoutResult);
 		this._ignoreChildChanges = oldIgnoreChildChanges;
 	}
@@ -409,22 +420,7 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -432,6 +428,25 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		this.addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -484,6 +499,9 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 				var variant = this.customToggleButtonVariant != null ? this.customToggleButtonVariant : PageIndicator.CHILD_VARIANT_TOGGLE_BUTTON;
 				button.variant = variant;
 			}
+			// for consistency, initialize before passing to the recycler's
+			// update function
+			button.initializeNow();
 			this.addChildAt(button, index + depthOffset);
 		} else {
 			button = this.inactiveToggleButtons.shift();
@@ -522,6 +540,9 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 	}
 
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
+		if (event.isDefaultPrevented()) {
+			return;
+		}
 		var result = this._selectedIndex;
 		switch (event.keyCode) {
 			case Keyboard.UP:
@@ -549,7 +570,7 @@ class PageIndicator extends FeathersControl implements IIndexSelector implements
 		} else if (result > this._maxSelectedIndex) {
 			result = this._maxSelectedIndex;
 		}
-		event.stopPropagation();
+		event.preventDefault();
 		// use the setter
 		this.selectedIndex = result;
 	}

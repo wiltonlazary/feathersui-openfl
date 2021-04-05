@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -76,7 +76,7 @@ final class MeasurementsUtil {
 				maxWidth = measureTarget.explicitMaxWidth;
 			}
 			if (maxWidth == null) {
-				maxWidth = Math.POSITIVE_INFINITY;
+				maxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 			measureTarget.maxWidth = maxWidth;
 
@@ -85,7 +85,7 @@ final class MeasurementsUtil {
 				maxHeight = measureTarget.explicitMaxHeight;
 			}
 			if (maxHeight == null) {
-				maxHeight = Math.POSITIVE_INFINITY;
+				maxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 			measureTarget.maxHeight = maxHeight;
 			return;

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -22,6 +22,12 @@ import feathers.themes.steel.components.SteelTreeViewItemRendererStyles;
 
 /**
 	A branch and leaf renderer for `TreeView`.
+
+	@event openfl.events.Event.OPEN Dispatched when a branch item renderer
+	opens. Does not get dispatched for leaf item renderers.
+
+	@event openfl.events.Event.CLOSE Dispatched when a branch item renderer
+	closes. Does not get dispatched for leaf item renderers.
 
 	@see `feathers.controls.TreeView`
 
@@ -267,7 +273,8 @@ class TreeViewItemRenderer extends ItemRenderer implements ITreeViewItemRenderer
 			cast(this._currentBranchOrLeafIcon, IValidating).validateNow();
 		}
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var depth = 0;
@@ -289,7 +296,8 @@ class TreeViewItemRenderer extends ItemRenderer implements ITreeViewItemRenderer
 			cast(this._currentBranchOrLeafIcon, IValidating).validateNow();
 		}
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var depth = 0;
@@ -311,7 +319,8 @@ class TreeViewItemRenderer extends ItemRenderer implements ITreeViewItemRenderer
 		}
 		var paddingLeft = this.paddingLeft;
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var disclosureGap = adjustedGap;

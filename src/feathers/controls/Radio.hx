@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,10 +8,14 @@
 
 package feathers.controls;
 
-import feathers.themes.steel.components.SteelRadioStyles;
-import openfl.events.Event;
-import openfl.errors.IllegalOperationError;
+import feathers.core.IFocusObject;
 import feathers.core.ToggleGroup;
+import feathers.themes.steel.components.SteelRadioStyles;
+import openfl.display.InteractiveObject;
+import openfl.errors.IllegalOperationError;
+import openfl.events.Event;
+import openfl.events.KeyboardEvent;
+import openfl.ui.Keyboard;
 
 /**
 	A selectable control that may be toggled on and off and exists in a group
@@ -62,12 +66,15 @@ class Radio extends ToggleButton implements IGroupedToggle {
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?text:String, selected:Bool = false) {
 		initializeRadioTheme();
 
-		super();
+		super(text, selected);
+
 		super.toggleable = true;
+
 		this.addEventListener(Event.ADDED_TO_STAGE, radio_addedToStageHandler);
+		this.addEventListener(KeyboardEvent.KEY_DOWN, radio_keyDownHandler);
 	}
 
 	override private function set_toggleable(value:Bool):Bool {
@@ -118,6 +125,63 @@ class Radio extends ToggleButton implements IGroupedToggle {
 		SteelRadioStyles.initialize();
 	}
 
+	private function navigateWithKeyboard(event:KeyboardEvent):Void {
+		if (event.isDefaultPrevented()) {
+			return;
+		}
+		if (this._toggleGroup == null) {
+			return;
+		}
+		var startIndex = this._toggleGroup.getItemIndex(this);
+		if (startIndex == -1) {
+			return;
+		}
+		var result = startIndex;
+		var needsAnotherPass = true;
+		var lastResult = -1;
+		while (needsAnotherPass) {
+			needsAnotherPass = false;
+			switch (event.keyCode) {
+				case Keyboard.UP:
+					result = result - 1;
+				case Keyboard.DOWN:
+					result = result + 1;
+				case Keyboard.LEFT:
+					result = result - 1;
+				case Keyboard.RIGHT:
+					result = result + 1;
+				default:
+					// not keyboard navigation
+					return;
+			}
+			if (result < 0) {
+				result = 0;
+			} else if (result >= this._toggleGroup.numItems) {
+				result = this._toggleGroup.numItems - 1;
+			}
+			var nextItem = this._toggleGroup.getItemAt(result);
+			if (!nextItem.enabled) {
+				// keep going until we reach a non-branch
+				if (result == lastResult) {
+					// but don't keep trying if we got the same result more than
+					// once because it means that we got stuck
+					return;
+				}
+				needsAnotherPass = true;
+			}
+			lastResult = result;
+		}
+		event.preventDefault();
+		this._toggleGroup.selectedIndex = result;
+		var nextFocus = cast(this._toggleGroup.selectedItem, IFocusObject);
+		if (this._focusManager != null) {
+			this._focusManager.focus = nextFocus;
+			nextFocus.showFocus(true);
+		} else {
+			this.stage.focus = cast(nextFocus, InteractiveObject);
+		}
+	}
+
 	private function radio_addedToStageHandler(event:Event):Void {
 		if (this._toggleGroup == null) {
 			// use the setter
@@ -131,5 +195,12 @@ class Radio extends ToggleButton implements IGroupedToggle {
 		if (this._toggleGroup == defaultRadioGroup) {
 			this._toggleGroup.removeItem(this);
 		}
+	}
+
+	private function radio_keyDownHandler(event:KeyboardEvent):Void {
+		if (!this._enabled) {
+			return;
+		}
+		this.navigateWithKeyboard(event);
 	}
 }

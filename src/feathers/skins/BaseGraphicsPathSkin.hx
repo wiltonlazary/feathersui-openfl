@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -312,7 +312,7 @@ class BaseGraphicsPathSkin extends ProgrammaticSkin {
 		switch (lineStyle) {
 			case None:
 				{
-					this.graphics.lineStyle(null);
+					this.graphics.lineStyle(Math.NaN, 0, 0.0);
 				}
 			case SolidColor(thickness, color, alpha, pixelHinting, scaleMode, caps, joints, miterLimit):
 				{

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -19,7 +19,6 @@ import feathers.data.ListViewItemState;
 import openfl.display.DisplayObject;
 import feathers.themes.steel.components.SteelPopUpListViewStyles;
 import openfl.events.TouchEvent;
-import lime.ui.KeyCode;
 import openfl.ui.Keyboard;
 import openfl.events.KeyboardEvent;
 import feathers.events.FeathersEvent;
@@ -34,6 +33,9 @@ import feathers.core.FeathersControl;
 import feathers.core.IDataSelector;
 #if air
 import openfl.ui.Multitouch;
+#end
+#if lime
+import lime.ui.KeyCode;
 #end
 
 /**
@@ -67,6 +69,20 @@ import openfl.ui.Multitouch;
 	this.addChild(list);
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when either
+	`PopUpListView.selectedItem` or `PopUpListView.selectedIndex` changes.
+
+	@event openfl.events.Event.OPEN Dispatched when the pop-up list view is
+	opened.
+
+	@event openfl.events.Event.CLOSE Dispatched when the pop-up list view is
+	closed.
+
+	@event feathers.events.ListViewEvent.ITEM_TRIGGER Dispatched when the user
+	taps or clicks an item renderer in the pop-up list view. The pointer must
+	remain within the bounds of the item renderer on release, and the list
+	view cannot scroll before release, or the gesture will be ignored.
+
 	@see [Tutorial: How to use the PopUpListView component](https://feathersui.com/learn/haxe-openfl/pop-up-list-view/)
 	@see `feathers.controls.ComboBox`
 
@@ -86,6 +102,9 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 	/**
 		The variant used to style the `Button` child component in a theme.
 
+		To override this default variant, set the
+		`PopUpListView.customButtonVariant` property.
+
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
 		@see `PopUpListView.customButtonVariant`
@@ -96,6 +115,9 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 
 	/**
 		The variant used to style the `ListView` child component in a theme.
+
+		To override this default variant, set the
+		`PopUpListView.customListViewVariant` property.
 
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
@@ -118,10 +140,12 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?dataProvider:IFlatCollection<Dynamic>) {
 		initializePopUpListViewTheme();
 
 		super();
+
+		this.dataProvider = dataProvider;
 
 		this.addEventListener(FocusEvent.FOCUS_IN, popUpListView_focusInHandler);
 		this.addEventListener(Event.REMOVED_FROM_STAGE, popUpListView_removedFromStageHandler);
@@ -132,10 +156,18 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 
 	private var buttonMeasurements:Measurements = new Measurements();
 
-	private var _dataProvider:IFlatCollection<Dynamic> = null;
+	private var _dataProvider:IFlatCollection<Dynamic>;
 
 	/**
 		The collection of data displayed by the list view.
+
+		Items in the collection must be class instances or anonymous structures.
+		Do not add primitive values (such as strings, booleans, or numeric
+		values) directly to the collection.
+
+		Additionally, all items in the collection must be unique object
+		instances. Do not add the same instance to the collection more than
+		once because a runtime exception will be thrown.
 
 		The following example passes in a data provider and tells the item
 		renderer how to interpret the data:
@@ -335,7 +367,11 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 	private var _previousCustomButtonVariant:String = null;
 
 	/**
-		A custom variant to set on the button.
+		A custom variant to set on the button, instead of
+		`PopUpListView.CHILD_VARIANT_BUTTON`.
+
+		The `customButtonVariant` will be not be used if the result of
+		`buttonFactory` already has a variant set.
 
 		@see `PopUpListView.CHILD_VARIANT_BUTTON`
 
@@ -347,7 +383,11 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 	private var _previousCustomListViewVariant:String = null;
 
 	/**
-		A custom variant to set on the pop-up list view.
+		A custom variant to set on the pop-up list view, instead of
+		`PopUpListView.CHILD_VARIANT_LIST_VIEW`.
+
+		The `customListViewVariant` will be not be used if the result of
+		`listViewFactory` already has a variant set.
 
 		@see `PopUpListView.CHILD_VARIANT_LIST_VIEW`
 
@@ -571,6 +611,7 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 			this.button.removeEventListener(MouseEvent.MOUSE_DOWN, popUpListView_button_mouseDownHandler);
 			this.button.removeEventListener(TouchEvent.TOUCH_BEGIN, popUpListView_button_touchBeginHandler);
 			this.button.removeEventListener(KeyboardEvent.KEY_DOWN, popUpListView_button_keyDownHandler);
+			this.removeChild(this.button);
 			this.button = null;
 		}
 		var factory = this._buttonFactory != null ? this._buttonFactory : defaultButtonFactory;
@@ -676,6 +717,9 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 	}
 
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
+		if (event.isDefaultPrevented()) {
+			return;
+		}
 		if (this._dataProvider == null || this._dataProvider.length == 0) {
 			return;
 		}
@@ -706,7 +750,7 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 		} else if (result >= this._dataProvider.length) {
 			result = this._dataProvider.length - 1;
 		}
-		event.stopPropagation();
+		event.preventDefault();
 		// use the setter
 		this.selectedIndex = result;
 	}
@@ -722,8 +766,10 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 			return;
 		}
 		if (this.open) {
+			event.preventDefault();
 			this.closeListView();
 		} else {
+			event.preventDefault();
 			this.openListView();
 		}
 	}
@@ -801,6 +847,7 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 				}
 				event.preventDefault();
 				this.closeListView();
+			#if lime
 			case KeyCode.APP_CONTROL_BACK:
 				if (event.isDefaultPrevented()) {
 					return;
@@ -810,6 +857,7 @@ class PopUpListView extends FeathersControl implements IIndexSelector implements
 				}
 				event.preventDefault();
 				this.closeListView();
+			#end
 		}
 	}
 

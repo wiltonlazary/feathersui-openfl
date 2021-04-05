@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -12,8 +12,12 @@ package feathers.core;
 	A display object with extra measurement properties, including minimum and
 	maximum dimensions.
 
+	@event openfl.events.Event.RESIZE Dispatched when either the width or the
+	height of the component has changed.
+
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.RESIZE)
 interface IMeasureObject extends IDisplayObject {
 	/**
 		The object's explicit width value, or `null` if `width` is not set

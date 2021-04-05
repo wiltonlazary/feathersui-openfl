@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -29,7 +29,7 @@ class DisplayObjectRecycler<T:B, S, B:DisplayObject> {
 		To instantiate an object with one or more required constructor
 		arguments, use `DisplayObjectRecycler.withFunction()` instead.
 	**/
-	public static function withClass<T:B & Constructible<() -> Void>, S, B:DisplayObject>(displayObjectType:Class<T>, ?update:(target:T, state:S) -> Void,
+	public static function withClass<T:B, S, B:DisplayObject>(displayObjectType:Class<T>, ?update:(target:T, state:S) -> Void,
 			?reset:(target:T, state:S) -> Void, ?destroy:(T) -> Void):DisplayObjectRecycler<T, S, B> {
 		var item = new DisplayObjectRecycler<T, S, B>();
 		item.create = () -> {

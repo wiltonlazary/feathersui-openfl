@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -43,6 +43,12 @@ import openfl.events.Event;
 	this.addChild(calendar);
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when
+	`CalendarGrid.selectedDate` changes.
+
+	@event openfl.events.Event.SCROLL Dispatched when
+	`CalendarGrid.displayedMonth` or `CalendarGrid.displayedFullYear` changes.
+
 	@see [Tutorial: How to use the CalendarGrid component](https://feathersui.com/learn/haxe-openfl/calendar-grid/)
 
 	@since 1.0.0
@@ -59,6 +65,10 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 		The variant used to style the `ToggleButton` child components from the
 		current month in a theme.
 
+		To override this default variant, set the
+		`CalendarGrid.customToggleButtonVariant` property.
+
+		@see `CalendarGrid.customToggleButtonVariant`
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
 		@since 1.0.0
@@ -69,6 +79,10 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 		The variant used to style the `ToggleButton` child components that are
 		not from the current month in a theme.
 
+		To override this default variant, set the
+		`CalendarGrid.customMutedToggleButtonVariant` property.
+
+		@see `CalendarGrid.customMutedToggleButtonVariant`
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
 		@since 1.0.0
@@ -79,6 +93,10 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 		The variant used to style the `Label` child components that display the
 		names of weekdays.
 
+		To override this default variant, set the
+		`CalendarGrid.customWeekdayLabel` property.
+
+		@see `CalendarGrid.customWeekdayLabel`
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
 		@since 1.0.0
@@ -252,36 +270,38 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 
 	/**
 		An optional custom variant to use for the toggle buttons that represent
-		dates in the current month.
+		dates in the current month, instead of
+		`CalendarGrid.CHILD_VARIANT_DATE_TOGGLE_BUTTON`.
 
 		@see `CalendarGrid.CHILD_VARIANT_DATE_TOGGLE_BUTTON`
 
 		@since 1.0.0
 	**/
 	@:style
-	public var toggleButtonVariant:String = null;
+	public var customToggleButtonVariant:String = null;
 
 	/**
 		An optional custom variant to use for the toggle buttons that represent
-		dates in the adjacent months.
+		dates in the adjacent months, instead of
+		`CalendarGrid.CHILD_VARIANT_MUTED_DATE_TOGGLE_BUTTON`.
 
 		@see `CalendarGrid.CHILD_VARIANT_MUTED_DATE_TOGGLE_BUTTON`
 
 		@since 1.0.0
 	**/
 	@:style
-	public var mutedToggleButtonVariant:String = null;
+	public var customMutedToggleButtonVariant:String = null;
 
 	/**
 		An optional custom variant to use for the labels that display the names
-		of weekdays.
+		of weekdays, instead of `CalendarGrid.CHILD_VARIANT_WEEKDAY_LABEL`.
 
 		@see `CalendarGrid.CHILD_VARIANT_WEEKDAY_LABEL`
 
 		@since 1.0.0
 	**/
 	@:style
-	public var weekdayLabelVariant:String = null;
+	public var customWeekdayLabelVariant:String = null;
 
 	/**
 		Determines if the weekday labels are visible or not.
@@ -403,7 +423,7 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 
 	private function refreshWeekdayLabels():Void {
 		var weekdayNames = this._customWeekdayNames != null ? this._customWeekdayNames : DEFAULT_WEEKDAY_NAMES;
-		var weekdayLabelVariant = this.weekdayLabelVariant != null ? this.weekdayLabelVariant : CHILD_VARIANT_WEEKDAY_LABEL;
+		var weekdayLabelVariant = this.customWeekdayLabelVariant != null ? this.customWeekdayLabelVariant : CHILD_VARIANT_WEEKDAY_LABEL;
 		var startOfWeek = this._customStartOfWeek != null ? this._customStartOfWeek : DEFAULT_START_OF_WEEK;
 		for (i in 0...this._dayNameLabels.length) {
 			var nameIndex = (i + startOfWeek) % this._dayNameLabels.length;
@@ -456,22 +476,7 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -479,6 +484,25 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		this.addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -512,8 +536,8 @@ class CalendarGrid extends FeathersControl implements IDateSelector {
 		var numDaysLastMonth = DateUtil.getDaysInMonth(lastMonth, lastMonthYear);
 		var currentDate = numDaysLastMonth - dayIndexOfFirst + 1;
 		var inCurrentMonth = currentDate == 1;
-		var toggleButtonVariant = this.toggleButtonVariant != null ? this.toggleButtonVariant : CHILD_VARIANT_DATE_TOGGLE_BUTTON;
-		var mutedToggleButtonVariant = this.mutedToggleButtonVariant != null ? this.mutedToggleButtonVariant : CHILD_VARIANT_MUTED_DATE_TOGGLE_BUTTON;
+		var toggleButtonVariant = this.customToggleButtonVariant != null ? this.customToggleButtonVariant : CHILD_VARIANT_DATE_TOGGLE_BUTTON;
+		var mutedToggleButtonVariant = this.customMutedToggleButtonVariant != null ? this.customMutedToggleButtonVariant : CHILD_VARIANT_MUTED_DATE_TOGGLE_BUTTON;
 		for (i in 0...this._dateButtons.length) {
 			var dateButton = this._dateButtons[i];
 			dateButton.selected = inCurrentMonth

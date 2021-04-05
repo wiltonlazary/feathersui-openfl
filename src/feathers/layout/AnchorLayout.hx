@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -18,6 +18,8 @@ import openfl.events.EventDispatcher;
 /**
 	Positions and sizes items by anchoring their edges (or center points) to
 	to their parent container or to other items in the same container.
+
+	@event openfl.events.Event.CHANGE
 
 	@see [Tutorial: How to use AnchorLayout with layout containers](https://feathersui.com/learn/haxe-openfl/anchor-layout/)
 	@see `feathers.layout.AnchorLayoutData`

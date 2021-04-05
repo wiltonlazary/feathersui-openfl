@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,11 +8,11 @@
 
 package feathers.controls;
 
-import feathers.core.IStateObserver;
 import feathers.core.FeathersControl;
-import feathers.core.IFocusObject;
 import feathers.core.IMeasureObject;
+import feathers.core.IStageFocusDelegate;
 import feathers.core.IStateContext;
+import feathers.core.IStateObserver;
 import feathers.core.ITextControl;
 import feathers.core.IUIControl;
 import feathers.core.IValidating;
@@ -24,6 +24,7 @@ import feathers.text.TextFormat;
 import feathers.themes.steel.components.SteelTextInputStyles;
 import feathers.utils.MeasurementsUtil;
 import openfl.display.DisplayObject;
+import openfl.display.InteractiveObject;
 import openfl.events.Event;
 import openfl.events.FocusEvent;
 import openfl.events.KeyboardEvent;
@@ -47,6 +48,11 @@ import openfl.ui.Keyboard;
 	this.addChild(input);
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when `TextInput.text` changes.
+
+	@event openfl.events.Event.SCROLL Dispatched when `TextInput.scrollX`
+	changes.
+
 	@see [Tutorial: How to use the TextInput component](https://feathersui.com/learn/haxe-openfl/text-input/)
 
 	@since 1.0.0
@@ -56,7 +62,7 @@ import openfl.ui.Keyboard;
 @:meta(DefaultProperty("text"))
 @defaultXmlProperty("text")
 @:styleContext
-class TextInput extends FeathersControl implements IStateContext<TextInputState> implements ITextControl implements IFocusObject {
+class TextInput extends FeathersControl implements IStateContext<TextInputState> implements ITextControl implements IStageFocusDelegate {
 	/**
 		A variant used to style the text input as a search box. Variants allow
 		themes to provide an assortment of different appearances for the same
@@ -90,7 +96,6 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		this.focusRect = null;
 
 		this.addEventListener(FocusEvent.FOCUS_IN, textInput_focusInHandler);
-		this.addEventListener(KeyboardEvent.KEY_DOWN, textInput_keyDownHandler);
 	}
 
 	private var _editable:Bool = true;
@@ -120,6 +125,13 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		this._editable = value;
 		this.setInvalid(STATE);
 		return this._editable;
+	}
+
+	@:flash.property
+	public var stageFocusTarget(get, never):InteractiveObject;
+
+	private function get_stageFocusTarget():InteractiveObject {
+		return this.textField;
 	}
 
 	private var _currentState:TextInputState = ENABLED;
@@ -311,6 +323,19 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		this.setInvalid(DATA);
 		FeathersEvent.dispatch(this, Event.CHANGE);
 		return this._text;
+	}
+
+	/**
+		@see `feathers.controls.ITextControl.baseline`
+	**/
+	@:flash.property
+	public var baseline(get, never):Float;
+
+	private function get_baseline():Float {
+		if (this.textField == null) {
+			return 0.0;
+		}
+		return this.textField.y + this.textField.getLineMetrics(0).ascent;
 	}
 
 	private var _prompt:String;
@@ -839,6 +864,23 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		this.selectRange(0, this._text.length);
 	}
 
+	/**
+		Sets all four padding properties to the same value.
+
+		@see `TextInput.paddingTop`
+		@see `TextInput.paddingRight`
+		@see `TextInput.paddingBottom`
+		@see `TextInput.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
 	private function initializeTextInputTheme():Void {
 		SteelTextInputStyles.initialize();
 	}
@@ -861,6 +903,7 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		var dataInvalid = this.isInvalid(DATA);
 		var scrollInvalid = this.isInvalid(SCROLL);
 		var selectionInvalid = this.isInvalid(SELECTION);
+		var sizeInvalid = this.isInvalid(SIZE);
 		var stateInvalid = this.isInvalid(STATE);
 		var stylesInvalid = this.isInvalid(STYLES);
 
@@ -882,12 +925,12 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 			this.refreshPromptStyles();
 		}
 
-		if (dataInvalid || stylesInvalid || stateInvalid) {
-			this.refreshText();
+		if (dataInvalid || stylesInvalid || stateInvalid || sizeInvalid) {
+			this.refreshText(sizeInvalid);
 		}
 
-		if (dataInvalid || stylesInvalid) {
-			this.refreshPromptText();
+		if (dataInvalid || stylesInvalid || sizeInvalid) {
+			this.refreshPromptText(sizeInvalid);
 		}
 
 		if (selectionInvalid) {
@@ -909,25 +952,7 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		if (Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = this;
-		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -936,6 +961,28 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 			return result;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		if (Std.is(skin, IStateObserver)) {
+			cast(skin, IStateObserver).stateContext = this;
+		}
+		this.addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -1201,7 +1248,7 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxWidth = this._backgroundSkinMeasurements.maxWidth;
 			} else {
-				newMaxWidth = Math.POSITIVE_INFINITY;
+				newMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -1212,7 +1259,7 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxHeight = this._backgroundSkinMeasurements.maxHeight;
 			} else {
-				newMaxHeight = Math.POSITIVE_INFINITY;
+				newMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -1261,14 +1308,16 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		}
 		if (this.promptTextField == null) {
 			this.promptTextField = new TextField();
-			this.promptTextField.selectable = false;
 			this.addChild(this.promptTextField);
 		}
+		this.promptTextField.selectable = false;
+		this.promptTextField.mouseWheelEnabled = false;
+		this.promptTextField.mouseEnabled = false;
 		this.promptTextField.visible = this._text.length == 0;
 	}
 
-	private function refreshPromptText():Void {
-		if (this._prompt == null || this._prompt == this._previousPrompt && !this._updatedPromptStyles) {
+	private function refreshPromptText(sizeInvalid:Bool):Void {
+		if (this._prompt == null || this._prompt == this._previousPrompt && !this._updatedPromptStyles && !sizeInvalid) {
 			// nothing to refresh
 			return;
 		}
@@ -1324,10 +1373,10 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		return textFormat;
 	}
 
-	private function refreshText():Void {
+	private function refreshText(sizeInvalid:Bool):Void {
 		this.textField.restrict = this.__restrict;
 		this.textField.maxChars = this._maxChars;
-		if (this._text == this._previousText && !this._updatedTextStyles) {
+		if (this._text == this._previousText && !this._updatedTextStyles && !sizeInvalid) {
 			// nothing to refresh
 			return;
 		}
@@ -1511,25 +1560,6 @@ class TextInput extends FeathersControl implements IStateContext<TextInputState>
 		if (Reflect.compare(event.target, this) == 0) {
 			this.stage.focus = this.textField;
 		}
-	}
-
-	private function textInput_keyDownHandler(event:KeyboardEvent):Void {
-		if (!this._enabled || event.isDefaultPrevented()) {
-			return;
-		}
-		switch (event.keyCode) {
-			case Keyboard.UP:
-			case Keyboard.DOWN:
-			case Keyboard.LEFT:
-			case Keyboard.RIGHT:
-			case Keyboard.PAGE_UP:
-			case Keyboard.PAGE_DOWN:
-			case Keyboard.HOME:
-			case Keyboard.END:
-			default:
-				return;
-		}
-		event.stopPropagation();
 	}
 
 	private function textField_focusInHandler(event:FocusEvent):Void {

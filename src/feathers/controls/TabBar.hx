@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -66,6 +66,13 @@ import openfl._internal.utils.ObjectPool;
 	this.addChild(tabs);
 	```
 
+	@event openfl.events.Event.CHANGE Dispatched when either
+	`TabBar.selectedItem` or `TabBar.selectedIndex` changes.
+
+	@event feathers.events.TabBarEvent.ITEM_TRIGGER Dispatched when the user
+	taps or clicks a tab. The pointer must remain within the bounds of the tab
+	on release, or the gesture will be ignored.
+
 	@see [Tutorial: How to use the TabBar component](https://feathersui.com/learn/haxe-openfl/tab-bar/)
 	@see `feathers.controls.navigators.TabNavigator`
 
@@ -82,6 +89,9 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 
 	/**
 		The variant used to style the tab child components in a theme.
+
+		To override this default variant, set the
+		`TabBar.customTabVariant` property.
 
 		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
@@ -104,10 +114,12 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?dataProvider:IFlatCollection<Dynamic>) {
 		initializeTabBarTheme();
 
 		super();
+
+		this.dataProvider = dataProvider;
 
 		this.addEventListener(KeyboardEvent.KEY_DOWN, tabBar_keyDownHandler);
 	}
@@ -116,6 +128,14 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 
 	/**
 		The collection of data displayed by the tab bar.
+
+		Items in the collection must be class instances or anonymous structures.
+		Do not add primitive values (such as strings, booleans, or numeric
+		values) directly to the collection.
+
+		Additionally, all items in the collection must be unique object
+		instances. Do not add the same instance to the collection more than
+		once because a runtime exception will be thrown.
 
 		The following example passes in a data provider and tells the tabs how
 		to interpret the data:
@@ -256,7 +276,11 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 	private var _previousCustomTabVariant:String = null;
 
 	/**
-		A custom variant to set on all item renderers.
+		A custom variant to set on all tabs, instead of
+		`TabBar.CHILD_VARIANT_TAB`.
+
+		The `customTabVariant` will be not be used if the result of
+		`tabRecycler.create()` already has a variant set.
 
 		@see `TabBar.CHILD_VARIANT_TAB`
 
@@ -421,6 +445,7 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 	private function handleLayout():Void {
 		var oldIgnoreChildChanges = this._ignoreChildChanges;
 		this._ignoreChildChanges = true;
+		this._layoutResult.reset();
 		this.layout.layout(cast this.activeTabs, this._layoutMeasurements, this._layoutResult);
 		this._ignoreChildChanges = oldIgnoreChildChanges;
 	}
@@ -517,22 +542,7 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -540,6 +550,25 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		this.addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -625,6 +654,9 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 				var variant = this.customTabVariant != null ? this.customTabVariant : TabBar.CHILD_VARIANT_TAB;
 				tab.variant = variant;
 			}
+			// for consistency, initialize before passing to the recycler's
+			// update function
+			tab.initializeNow();
 		} else {
 			tab = this.inactiveTabs.shift();
 		}
@@ -666,7 +698,7 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 		var oldIgnoreSelectionChange = this._ignoreSelectionChange;
 		this._ignoreSelectionChange = true;
 		if (Std.is(tab, IUIControl)) {
-			var uiControl = cast(tab, IToggle);
+			var uiControl = cast(tab, IUIControl);
 			uiControl.enabled = state.enabled;
 		}
 		if (Std.is(tab, IDataRenderer)) {
@@ -689,6 +721,9 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 	}
 
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
+		if (event.isDefaultPrevented()) {
+			return;
+		}
 		if (this._dataProvider == null || this._dataProvider.length == 0) {
 			return;
 		}
@@ -719,7 +754,7 @@ class TabBar extends FeathersControl implements IIndexSelector implements IDataS
 		} else if (result >= this._dataProvider.length) {
 			result = this._dataProvider.length - 1;
 		}
-		event.stopPropagation();
+		event.preventDefault();
 		// use the setter
 		this.selectedIndex = result;
 	}

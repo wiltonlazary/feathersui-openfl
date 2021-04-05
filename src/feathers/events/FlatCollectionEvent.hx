@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -142,7 +142,7 @@ class FlatCollectionEvent extends Event {
 	public static function dispatch(dispatcher:IEventDispatcher, type:String, index:Int, addedItem:Dynamic = null, removedItem:Dynamic = null,
 			bubbles:Bool = false, cancelable:Bool = false):Bool {
 		#if flash
-		var event = new FlatCollectionEvent(type, index, bubbles, cancelable);
+		var event = new FlatCollectionEvent(type, index, addedItem, removedItem, bubbles, cancelable);
 		return dispatcher.dispatchEvent(event);
 		#else
 		var event = _pool.get();

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -18,6 +18,9 @@ import openfl.text.TextFormatAlign;
 	A special replacement for `openfl.text.TextFormat` that dispatches
 	`Event.CHANGE` when any of its properties changes, and supports creating a
 	clone with the same properties.
+
+	@event openfl.events.Event.CHANGE Dispatched when any property of the
+	`TextFormat` changes.
 
 	@since 1.0.0
 **/

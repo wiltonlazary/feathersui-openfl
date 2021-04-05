@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -206,6 +206,10 @@ class KeyToState<T> {
 	}
 
 	private function resetKeyState():Void {
+		if (this._downKeyCode == null) {
+			// not down, don't do anything
+			return;
+		}
 		this._downKeyCode = null;
 		this.changeState(this._upState);
 	}
@@ -227,7 +231,7 @@ class KeyToState<T> {
 	}
 
 	private function target_keyUpHandler(event:KeyboardEvent):Void {
-		if (this._downKeyCode == null || event.keyCode != this._downKeyCode) {
+		if (event.keyCode != this._downKeyCode) {
 			return;
 		}
 		this.resetKeyState();

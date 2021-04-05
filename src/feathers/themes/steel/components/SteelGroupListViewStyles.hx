@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -113,8 +113,8 @@ class SteelGroupListViewStyles {
 			styleProvider.setStyleFunction(GroupListView, GroupListView.VARIANT_BORDERLESS, styleGroupListViewWithBorderlessVariant);
 		}
 
-		if (styleProvider.getStyleFunction(ItemRenderer, GroupListView.CHILD_VARIANT_HEADER) == null) {
-			styleProvider.setStyleFunction(ItemRenderer, GroupListView.CHILD_VARIANT_HEADER, function(itemRenderer:ItemRenderer):Void {
+		if (styleProvider.getStyleFunction(ItemRenderer, GroupListView.CHILD_VARIANT_HEADER_RENDERER) == null) {
+			styleProvider.setStyleFunction(ItemRenderer, GroupListView.CHILD_VARIANT_HEADER_RENDERER, function(itemRenderer:ItemRenderer):Void {
 				if (itemRenderer.backgroundSkin == null) {
 					var skin = new RectangleSkin();
 					skin.fill = theme.getSubHeadingFill();

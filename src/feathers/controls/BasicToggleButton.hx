@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -30,6 +30,19 @@ import openfl.events.Event;
 	content, that is useful for purposes like skinning. For a more full-featured
 	toggle button, with a label and icon, see `feathers.controls.ToggleButton`
 	instead.
+
+	@event openfl.events.Event.CHANGE Dispatched when the
+	`BasicToggleButton.selected` property changes. This event is dispatched
+	both when the `selected` property changes programmatically or as a result of
+	a click or tap user interaction. User interaction may only change selection
+	when the `toggleable` property is set to `true`, but the `selected` property
+	may be changed programmatically even if `toggleable` is `false`.
+
+	@event feathers.events.TriggerEvent.TRIGGER Dispatched when the the user
+	taps or clicks the button. The pointer must remain within the bounds of the
+	button on release to register as a tap or a click. If focus management is
+	enabled, the button may also be triggered by pressing the spacebar while the
+	button has focus.
 
 	@since 1.0.0
 
@@ -348,25 +361,7 @@ class BasicToggleButton extends FeathersControl implements ITriggerView implemen
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		if (Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = this;
-		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -378,6 +373,28 @@ class BasicToggleButton extends FeathersControl implements ITriggerView implemen
 			return this.selectedBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		if (Std.is(skin, IStateObserver)) {
+			cast(skin, IStateObserver).stateContext = this;
+		}
+		this.addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -468,7 +485,7 @@ class BasicToggleButton extends FeathersControl implements ITriggerView implemen
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxWidth = this._backgroundSkinMeasurements.maxWidth;
 			} else {
-				newMaxWidth = Math.POSITIVE_INFINITY;
+				newMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -479,7 +496,7 @@ class BasicToggleButton extends FeathersControl implements ITriggerView implemen
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxHeight = this._backgroundSkinMeasurements.maxHeight;
 			} else {
-				newMaxHeight = Math.POSITIVE_INFINITY;
+				newMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 

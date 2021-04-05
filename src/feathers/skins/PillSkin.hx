@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -59,7 +59,10 @@ class PillSkin extends BaseGraphicsPathSkin {
 		var thickness = getLineThickness(currentBorder);
 		var thicknessOffset = thickness / 2.0;
 
+		var drawWidth = Math.max(0.0, this.actualWidth - thickness);
+		var drawHeight = Math.max(0.0, this.actualHeight - thickness);
+
 		var ellipseSize = this.capDirection == VERTICAL ? this.actualWidth : this.actualHeight;
-		this.graphics.drawRoundRect(thicknessOffset, thicknessOffset, this.actualWidth - thickness, this.actualHeight - thickness, ellipseSize);
+		this.graphics.drawRoundRect(thicknessOffset, thicknessOffset, drawWidth, drawHeight, ellipseSize);
 	}
 }

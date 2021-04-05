@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,15 +8,18 @@
 
 package feathers.layout;
 
-import feathers.events.FeathersEvent;
 import feathers.core.IMeasureObject;
-import openfl.events.Event;
-import openfl.display.DisplayObject;
-import openfl.events.EventDispatcher;
 import feathers.core.IValidating;
+import feathers.events.FeathersEvent;
+import openfl.display.DisplayObject;
+import openfl.errors.ArgumentError;
+import openfl.events.Event;
+import openfl.events.EventDispatcher;
 
 /**
 	The layout used by the `VDividedBox` component.
+
+	@event openfl.events.Event.CHANGE
 
 	@see `feathers.controls.VDividedBox`
 
@@ -247,6 +250,23 @@ class VDividedBoxLayout extends EventDispatcher implements ILayout {
 	}
 
 	/**
+		Sets all four padding properties to the same value.
+
+		@see `VDividedBoxLayout.paddingTop`
+		@see `VDividedBoxLayout.paddingRight`
+		@see `VDividedBoxLayout.paddingBottom`
+		@see `VDividedBoxLayout.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
+	/**
 		@see `feathers.layout.ILayout.layout()`
 	**/
 	public function layout(items:Array<DisplayObject>, measurements:Measurements, ?result:LayoutBoundsResult):LayoutBoundsResult {
@@ -340,11 +360,13 @@ class VDividedBoxLayout extends EventDispatcher implements ILayout {
 					item.x = Math.max(this._paddingLeft, this._paddingLeft + (viewPortWidth - this._paddingLeft - this._paddingRight) - item.width);
 				case CENTER:
 					item.x = Math.max(this._paddingLeft, this._paddingLeft + (viewPortWidth - this._paddingLeft - this._paddingRight - item.width) / 2.0);
+				case LEFT:
+					item.x = this._paddingLeft;
 				case JUSTIFY:
 					item.x = this._paddingLeft;
 					item.width = viewPortWidth - this._paddingLeft - this._paddingRight;
 				default:
-					item.x = this._paddingLeft;
+					throw new ArgumentError("Unknown horizontal align: " + this._horizontalAlign);
 			}
 		}
 	}

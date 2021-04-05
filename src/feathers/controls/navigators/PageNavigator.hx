@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,6 +8,7 @@
 
 package feathers.controls.navigators;
 
+import feathers.core.InvalidationFlag;
 import feathers.core.IDataSelector;
 import feathers.core.IIndexSelector;
 import feathers.data.IFlatCollection;
@@ -50,13 +51,34 @@ import openfl.events.Event;
 @defaultXmlProperty("dataProvider")
 @:styleContext
 class PageNavigator extends BaseNavigator implements IIndexSelector implements IDataSelector<PageItem> {
+	private static final INVALIDATION_FLAG_PAGE_INDICATOR_FACTORY = InvalidationFlag.CUSTOM("pageIndicatorFactory");
+
+	/**
+		The variant used to style the `PageIndicator` child component.
+
+		To override this default variant, set the
+		`PageNavigator.customPageIndicatorVariant` property.
+
+		@see `PageNavigator.customPageIndicatorVariant`
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@since 1.0.0
+	**/
+	public static final CHILD_VARIANT_PAGE_INDICATOR = "pageNavigator_pageIndicator";
+
+	private static function defaultPageIndicatorFactory():PageIndicator {
+		return new PageIndicator();
+	}
+
 	/**
 		Creates a new `PageNavigator` object.
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?dataProvider:IFlatCollection<PageItem>) {
 		initializePageNavigatorTheme();
+
+		this.dataProvider = dataProvider;
 
 		super();
 	}
@@ -68,6 +90,15 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 
 	private var _dataProvider:IFlatCollection<PageItem>;
 
+	/**
+		The collection of `PageItem` data displayed by the navigator.
+
+		All `PageItem` instances in the collection must be unique. Do not add
+		the same instance to the collection more than once because a runtime
+		exception may be thrown.
+
+		@since 1.0.0
+	**/
 	@:flash.property
 	public var dataProvider(get, set):IFlatCollection<PageItem>;
 
@@ -141,7 +172,8 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 			this._selectedItem = this._dataProvider.get(this._selectedIndex);
 		}
 		this.setInvalid(SELECTION);
-		FeathersEvent.dispatch(this, Event.CHANGE);
+		// don't dispatch Event.CHANGE here because it will be dispatched as
+		// part of the process of changing the view in BaseNavigator
 		return this._selectedIndex;
 	}
 
@@ -257,18 +289,70 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 	@:style
 	public var nextTransition:(DisplayObject, DisplayObject) -> IEffectContext = null;
 
+	/**
+		The space, measured in pixels, between the navigator's active view and
+		its page indicator.
+
+		@since 1.0.0
+	**/
+	@:style
+	public var gap:Float = 0.0;
+
+	/**
+		An optional custom variant to use for the page indicator sub-component,
+		instead of `PageNavigator.CHILD_VARIANT_PAGE_INDICATOR`.
+
+		The `customPageIndicatorVariant` will be not be used if the result of
+		`pageIndicatorFactory` already has a variant set.
+
+		@see `PageNavigator.CHILD_VARIANT_PAGE_INDICATOR`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var customPageIndicatorVariant:String = null;
+
+	private var _pageIndicatorFactory:() -> PageIndicator;
+
+	/**
+		Creates the page indicator, which must be of type
+		`feathers.controls.PageIndicator`.
+
+		In the following example, a custom page indicator factory is provided:
+
+		```hx
+		navigator.pageIndicatorFactory = () ->
+		{
+			return new PageIndicator();
+		};
+		```
+
+		@see `feathers.controls.PageIndicator`
+
+		@since 1.0.0
+	**/
+	@:flash.property
+	public var pageIndicatorFactory(get, set):() -> PageIndicator;
+
+	private function get_pageIndicatorFactory():() -> PageIndicator {
+		return this._pageIndicatorFactory;
+	}
+
+	private function set_pageIndicatorFactory(value:() -> PageIndicator):() -> PageIndicator {
+		if (this._pageIndicatorFactory == value) {
+			return this._pageIndicatorFactory;
+		}
+		this._pageIndicatorFactory = value;
+		this.setInvalid(INVALIDATION_FLAG_PAGE_INDICATOR_FACTORY);
+		return this._pageIndicatorFactory;
+	}
+
 	private var _ignoreSelectionChange = false;
 
 	private var _dragTransitionContext:EventToPositionEffectContext;
 
 	override private function initialize():Void {
 		super.initialize();
-
-		if (this.pageIndicator == null) {
-			this.pageIndicator = new PageIndicator();
-			this.addChild(this.pageIndicator);
-		}
-		this.pageIndicator.addEventListener(Event.CHANGE, pageNavigator_pageIndicator_changeHandler);
 
 		if (this._previousEdgePuller == null) {
 			this._previousEdgePuller = new EdgePuller(this, LEFT);
@@ -291,14 +375,19 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 	override private function update():Void {
 		var dataInvalid = this.isInvalid(DATA);
 		var selectionInvalid = this.isInvalid(SELECTION);
+		var pageIndicatorInvalid = this.isInvalid(INVALIDATION_FLAG_PAGE_INDICATOR_FACTORY);
 
-		if (dataInvalid) {
+		if (pageIndicatorInvalid) {
+			this.createPageIndicator();
+		}
+
+		if (dataInvalid || pageIndicatorInvalid) {
 			this.pageIndicator.maxSelectedIndex = this.maxSelectedIndex;
 			this._previousEdgePuller.simulateTouch = this._simulateTouch;
 			this._nextEdgePuller.simulateTouch = this._simulateTouch;
 		}
 
-		if (dataInvalid || selectionInvalid) {
+		if (dataInvalid || selectionInvalid || pageIndicatorInvalid) {
 			this.refreshSelection();
 		}
 
@@ -327,14 +416,29 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 			this.pageIndicator.validateNow();
 			switch (this.pageIndicatorPosition) {
 				case TOP:
-					this.topContentOffset = this.pageIndicator.height;
+					this.topContentOffset = this.pageIndicator.height + this.gap;
 				case BOTTOM:
-					this.bottomContentOffset = this.pageIndicator.height;
+					this.bottomContentOffset = this.pageIndicator.height + this.gap;
 				default:
 					throw new ArgumentError('Invalid pageIndicatorPosition ${this.pageIndicatorPosition}');
 			}
 		}
 		return super.measure();
+	}
+
+	private function createPageIndicator():Void {
+		if (this.pageIndicator != null) {
+			this.pageIndicator.removeEventListener(Event.CHANGE, pageNavigator_pageIndicator_changeHandler);
+			this.removeChild(this.pageIndicator);
+			this.pageIndicator = null;
+		}
+		var factory = this._pageIndicatorFactory != null ? this._pageIndicatorFactory : defaultPageIndicatorFactory;
+		this.pageIndicator = factory();
+		if (this.pageIndicator.variant == null) {
+			this.pageIndicator.variant = this.customPageIndicatorVariant != null ? this.customPageIndicatorVariant : PageNavigator.CHILD_VARIANT_PAGE_INDICATOR;
+		}
+		this.pageIndicator.addEventListener(Event.CHANGE, pageNavigator_pageIndicator_changeHandler);
+		this.addChild(this.pageIndicator);
 	}
 
 	override private function layoutContent():Void {
@@ -354,14 +458,14 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 			this.activeItemView.x = 0.0;
 			switch (this.pageIndicatorPosition) {
 				case TOP:
-					this.activeItemView.y = this.pageIndicator.height;
+					this.activeItemView.y = this.pageIndicator.height + this.gap;
 				case BOTTOM:
 					this.activeItemView.y = 0.0;
 				default:
 					throw new ArgumentError('Invalid pageIndicatorPosition ${this.pageIndicatorPosition}');
 			}
 			this.activeItemView.width = this.actualWidth;
-			this.activeItemView.height = this.actualHeight - this.pageIndicator.height;
+			this.activeItemView.height = this.actualHeight - this.pageIndicator.height - this.gap;
 		}
 	}
 
@@ -434,6 +538,7 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 	private function pageNavigator_dataProvider_addItemHandler(event:FlatCollectionEvent):Void {
 		var item = cast(event.addedItem, PageItem);
 		this.addItemInternal(item.internalID, item);
+		this.setInvalid(DATA);
 
 		if (this._selectedIndex >= event.index) {
 			// use the setter
@@ -450,6 +555,7 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 	private function pageNavigator_dataProvider_removeItemHandler(event:FlatCollectionEvent):Void {
 		var item = cast(event.removedItem, PageItem);
 		this.removeItemInternal(item.internalID);
+		this.setInvalid(DATA);
 
 		if (this._dataProvider.length == 0) {
 			// use the setter
@@ -465,6 +571,7 @@ class PageNavigator extends BaseNavigator implements IIndexSelector implements I
 		var removedItem = cast(event.removedItem, PageItem);
 		this.removeItemInternal(removedItem.internalID);
 		this.addItemInternal(addedItem.internalID, addedItem);
+		this.setInvalid(DATA);
 
 		if (this._selectedIndex == event.index) {
 			this.selectedItem = this._dataProvider.get(this._selectedIndex);

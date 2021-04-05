@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -19,6 +19,8 @@ import openfl.events.EventDispatcher;
 
 /**
 	Positions cell or header renderers in a `GridView` component.
+
+	@event openfl.events.Event.CHANGE
 
 	@see `feathers.controls.GridView`
 
@@ -111,6 +113,19 @@ class GridViewRowLayout extends EventDispatcher implements ILayout {
 	}
 
 	/**
+		Sets all padding properties to the same value.
+
+		@see `GridViewRowLayout.paddingRight`
+		@see `GridViewRowLayout.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingRight = value;
+		this.paddingLeft = value;
+	}
+
+	/**
 		@see `feathers.layout.ILayout.layout()`
 	**/
 	public function layout(items:Array<DisplayObject>, measurements:Measurements, ?result:LayoutBoundsResult):LayoutBoundsResult {
@@ -196,8 +211,8 @@ class GridViewRowLayout extends EventDispatcher implements ILayout {
 			explicitMaxWidth:Null<Float>):Void {
 		var pendingIndices:Array<Int> = [];
 		var totalMeasuredWidth = 0.0;
-		var totalMinWidth = 0.0;
 		var totalPercentWidth = 0.0;
+		var maxMinWidth = 0.0;
 		for (i in 0...this._columns.length) {
 			var column = this._columns.get(i);
 			var columnWidth = column.width;
@@ -227,7 +242,8 @@ class GridViewRowLayout extends EventDispatcher implements ILayout {
 					}
 					itemMinWidth = cast(item, IMeasureObject).minWidth;
 				}
-				totalMinWidth += Math.max(column.minWidth, itemMinWidth);
+				itemMinWidth = Math.max(column.minWidth, itemMinWidth);
+				maxMinWidth = Math.max(itemMinWidth, maxMinWidth);
 				totalPercentWidth += percentWidth;
 				pendingIndices.push(i);
 				continue;
@@ -240,7 +256,11 @@ class GridViewRowLayout extends EventDispatcher implements ILayout {
 		if (explicitWidth != null) {
 			remainingWidth = explicitWidth;
 		} else {
-			remainingWidth = totalMeasuredWidth + totalMinWidth;
+			// since we're dividing the space equally among the remaining
+			// columns, use the maximum column width to ensure that everything
+			// is visible and not cropped
+			var totalMaxMinWidth = pendingIndices.length * maxMinWidth;
+			remainingWidth = totalMeasuredWidth + totalMaxMinWidth;
 			if (explicitMinWidth != null && remainingWidth < explicitMinWidth) {
 				remainingWidth = explicitMinWidth;
 			} else if (explicitMaxWidth != null && remainingWidth > explicitMaxWidth) {

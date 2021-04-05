@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -15,12 +15,20 @@ import openfl.display.DisplayObject;
 	Manages the layout and positioning of a pop-up displayed by a component like
 	`ComboBox` or `PopUpListView`.
 
+	@event openfl.events.Event.OPEN Dispatched when the pop-up adapter opens,
+	and `IPopUpAdapter.active` changes to `true`.
+
+	@event openfl.events.Event.CLOSE Dispatched when the pop-up adapter closes,
+	and `IPopUpAdapter.active` changes to `false`.
+
 	@see `feathers.core.PopUpManager`
 	@see `feathers.controls.ComboBox`
 	@see `feathers.controls.PopUpListView`
 
 	@since 1.0.0
 **/
+@:event(openfl.events.Event.OPEN)
+@:event(openfl.events.Event.CLOSE)
 interface IPopUpAdapter extends IEventDispatcher {
 	/**
 		Indicates if the pop-up is currently active or not.

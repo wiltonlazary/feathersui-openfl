@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,15 +8,16 @@
 
 package feathers.controls.dataRenderers;
 
-import feathers.utils.PointerToState;
-import feathers.core.IStateContext;
-import openfl.events.Event;
-import feathers.events.FeathersEvent;
 import feathers.core.IPointerDelegate;
+import feathers.core.IStateContext;
+import feathers.core.IStateObserver;
+import feathers.events.FeathersEvent;
 import feathers.layout.ILayoutIndexObject;
 import feathers.themes.steel.components.SteelLayoutGroupItemRendererStyles;
+import feathers.utils.PointerToState;
 import openfl.display.DisplayObject;
 import openfl.display.InteractiveObject;
+import openfl.events.Event;
 
 /**
 	A generic renderer with support for layout that may support any number of
@@ -124,6 +125,7 @@ class LayoutGroupItemRenderer extends LayoutGroup implements IStateContext<Toggl
 		this.setInvalid(DATA);
 		this.setInvalid(STYLES);
 		FeathersEvent.dispatch(this, Event.CHANGE);
+		this.changeState(this.currentState);
 		return this._selected;
 	}
 
@@ -288,5 +290,23 @@ class LayoutGroupItemRenderer extends LayoutGroup implements IStateContext<Toggl
 			return this.selectedBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	override private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin != null) {
+			if (Std.is(skin, IStateObserver)) {
+				cast(skin, IStateObserver).stateContext = this;
+			}
+		}
+		super.addCurrentBackgroundSkin(skin);
+	}
+
+	override private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin != null) {
+			if (Std.is(skin, IStateObserver)) {
+				cast(skin, IStateObserver).stateContext = null;
+			}
+		}
+		super.removeCurrentBackgroundSkin(skin);
 	}
 }

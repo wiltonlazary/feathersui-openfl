@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -9,6 +9,7 @@
 package feathers.controls.dataRenderers;
 
 import feathers.controls.dataRenderers.IDataRenderer;
+import feathers.core.InvalidationFlag;
 import feathers.core.IPointerDelegate;
 import feathers.core.ITextControl;
 import feathers.core.IUIControl;
@@ -474,6 +475,13 @@ class GridViewRowRenderer extends LayoutGroup implements ITriggerView implements
 			cellRenderer = storage.cellRendererRecycler.create();
 			if (storage.measurements == null) {
 				storage.measurements = new Measurements(cellRenderer);
+			}
+			// for consistency, initialize before passing to the recycler's
+			// update function. plus, this ensures that custom item renderers
+			// correctly handle property changes in update() instead of trying
+			// to access them too early in initialize().
+			if (Std.is(cellRenderer, IUIControl)) {
+				cast(cellRenderer, IUIControl).initializeNow();
 			}
 		} else {
 			cellRenderer = storage.inactiveCellRenderers.shift();

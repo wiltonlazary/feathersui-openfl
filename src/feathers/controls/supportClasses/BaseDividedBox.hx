@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -518,22 +518,7 @@ class BaseDividedBox extends FeathersControl {
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		this.addRawChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -541,6 +526,25 @@ class BaseDividedBox extends FeathersControl {
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		this.addRawChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -665,11 +669,11 @@ class BaseDividedBox extends FeathersControl {
 		}
 		var viewPortMaxWidth = this.explicitMaxWidth;
 		if (needsMaxWidth) {
-			viewPortMaxWidth = Math.POSITIVE_INFINITY;
+			viewPortMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		var viewPortMaxHeight = this.explicitMaxHeight;
 		if (needsMaxHeight) {
-			viewPortMaxHeight = Math.POSITIVE_INFINITY;
+			viewPortMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		if (this._backgroundSkinMeasurements != null) {
 			// because the layout might need it, we account for the
@@ -703,6 +707,7 @@ class BaseDividedBox extends FeathersControl {
 	private function handleLayout():Void {
 		var oldIgnoreChildChanges = this._ignoreChildChanges;
 		this._ignoreChildChanges = true;
+		this._layoutResult.reset();
 		this.layout.layout(this._layoutItems, this._layoutMeasurements, this._layoutResult);
 		this._ignoreChildChanges = oldIgnoreChildChanges;
 	}
@@ -870,11 +875,11 @@ class BaseDividedBox extends FeathersControl {
 
 	private function baseDividedBox_divider_mouseDownHandler(event:MouseEvent):Void {
 		var divider = cast(event.currentTarget, InteractiveObject);
-		this.resizeTouchBegin(ExclusivePointer.POINTER_ID_MOUSE, divider, event.stageX, event.stageY);
+		this.resizeTouchBegin(ExclusivePointer.POINTER_ID_MOUSE, divider, this.stage.mouseX, this.stage.mouseY);
 	}
 
 	private function baseDividedBox_divider_stage_mouseMoveHandler(event:MouseEvent):Void {
-		this.resizeTouchMove(ExclusivePointer.POINTER_ID_MOUSE, event.stageX, event.stageY);
+		this.resizeTouchMove(ExclusivePointer.POINTER_ID_MOUSE, this.stage.mouseX, this.stage.mouseY);
 	}
 
 	private function baseDividedBox_divider_stage_touchMoveHandler(event:TouchEvent):Void {
@@ -882,7 +887,7 @@ class BaseDividedBox extends FeathersControl {
 	}
 
 	private function baseDividedBox_divider_stage_mouseUpHandler(event:MouseEvent):Void {
-		this.resizeTouchEnd(ExclusivePointer.POINTER_ID_MOUSE, event.stageX, event.stageY);
+		this.resizeTouchEnd(ExclusivePointer.POINTER_ID_MOUSE, this.stage.mouseX, this.stage.mouseY);
 	}
 
 	private function baseDividedBox_divider_stage_touchEndHandler(event:TouchEvent):Void {

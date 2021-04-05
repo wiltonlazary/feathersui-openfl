@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -85,10 +85,12 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(text:String = "") {
 		initializeLabelTheme();
 
 		super();
+
+		this.text = text;
 	}
 
 	private var textField:TextField;
@@ -99,7 +101,7 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 	private var _updatedTextStyles = false;
 	private var _textMeasuredWidth:Float;
 	private var _textMeasuredHeight:Float;
-	private var _text:String = "";
+	private var _text:String;
 
 	/**
 		The text displayed by the label.
@@ -142,6 +144,19 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 		this._text = value;
 		this.setInvalid(DATA);
 		return this._text;
+	}
+
+	/**
+		@see `feathers.controls.ITextControl.baseline`
+	**/
+	@:flash.property
+	public var baseline(get, never):Float;
+
+	private function get_baseline():Float {
+		if (this.textField == null) {
+			return 0.0;
+		}
+		return this.textField.y + this.textField.getLineMetrics(0).ascent;
 	}
 
 	private var _htmlText:String = null;
@@ -301,13 +316,13 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 	public var disabledTextFormat:AbstractTextFormat = null;
 
 	/**
-		The minimum space, in pixels, between the button's top edge and the
-		button's content.
+		The minimum space, in pixels, between the label's top edge and the
+		label's content.
 
-		In the following example, the button's top padding is set to 20 pixels:
+		In the following example, the label's top padding is set to 20 pixels:
 
 		```hx
-		button.paddingTop = 20.0;
+		label.paddingTop = 20.0;
 		```
 
 		@default 0.0
@@ -318,14 +333,14 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 	public var paddingTop:Float = 0.0;
 
 	/**
-		The minimum space, in pixels, between the button's right edge and the
-		button's content.
+		The minimum space, in pixels, between the label's right edge and the
+		label's content.
 
-		In the following example, the button's right padding is set to 20
+		In the following example, the label's right padding is set to 20
 		pixels:
 
 		```hx
-		button.paddingRight = 20.0;
+		label.paddingRight = 20.0;
 		```
 
 		@default 0.0
@@ -336,14 +351,14 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 	public var paddingRight:Float = 0.0;
 
 	/**
-		The minimum space, in pixels, between the button's bottom edge and the
-		button's content.
+		The minimum space, in pixels, between the label's bottom edge and the
+		label's content.
 
-		In the following example, the button's bottom padding is set to 20
+		In the following example, the label's bottom padding is set to 20
 		pixels:
 
 		```hx
-		button.paddingBottom = 20.0;
+		label.paddingBottom = 20.0;
 		```
 
 		@default 0.0
@@ -354,14 +369,14 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 	public var paddingBottom:Float = 0.0;
 
 	/**
-		The minimum space, in pixels, between the button's left edge and the
-		button's content.
+		The minimum space, in pixels, between the label's left edge and the
+		label's content.
 
-		In the following example, the button's left padding is set to 20
+		In the following example, the label's left padding is set to 20
 		pixels:
 
 		```hx
-		button.paddingLeft = 20.0;
+		label.paddingLeft = 20.0;
 		```
 
 		@default 0.0
@@ -373,12 +388,12 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 
 	/**
 		How the content is positioned vertically (along the y-axis) within the
-		button.
+		label.
 
-		The following example aligns the button's content to the top:
+		The following example aligns the label's content to the top:
 
 		```hx
-		button.verticalAlign = TOP;
+		label.verticalAlign = TOP;
 		```
 
 		**Note:** The `VerticalAlign.JUSTIFY` constant is not supported by this
@@ -449,6 +464,23 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 	**/
 	@:style
 	public var disabledBackgroundSkin:DisplayObject = null;
+
+	/**
+		Sets all four padding properties to the same value.
+
+		@see `Label.paddingTop`
+		@see `Label.paddingRight`
+		@see `Label.paddingBottom`
+		@see `Label.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
 
 	private function initializeLabelTheme():Void {
 		SteelLabelStyles.initialize();
@@ -561,7 +593,7 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxWidth = this._backgroundSkinMeasurements.maxWidth;
 			} else {
-				newMaxWidth = Math.POSITIVE_INFINITY;
+				newMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -572,7 +604,7 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxHeight = this._backgroundSkinMeasurements.maxHeight;
 			} else {
-				newMaxHeight = Math.POSITIVE_INFINITY;
+				newMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -671,22 +703,7 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		this.addChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -694,6 +711,25 @@ class Label extends FeathersControl implements ITextControl implements IHTMLText
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		this.addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {

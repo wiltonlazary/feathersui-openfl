@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -9,9 +9,9 @@
 package feathers.controls.supportClasses;
 
 import feathers.core.FeathersControl;
-import feathers.core.InvalidationFlag;
+import feathers.core.ITextControl;
 import feathers.events.FeathersEvent;
-import feathers.utils.MathUtil;
+import openfl.display.InteractiveObject;
 import openfl.errors.ArgumentError;
 import openfl.events.Event;
 import openfl.events.FocusEvent;
@@ -23,12 +23,14 @@ import openfl.text.TextLineMetrics;
 /**
 	An implementation of `IViewPort` for `TextArea`.
 
+	@event openfl.events.Event.CHANGE
+
 	@see `feathers.controls.TextArea`
 
 	@since 1.0.0
 **/
 @:event(openfl.events.Event.CHANGE)
-class TextFieldViewPort extends FeathersControl implements IViewPort {
+class TextFieldViewPort extends FeathersControl implements IViewPort implements ITextControl {
 	public function new() {
 		super();
 
@@ -84,6 +86,19 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 		this.setInvalid(DATA);
 		FeathersEvent.dispatch(this, Event.CHANGE);
 		return this._text;
+	}
+
+	/**
+		@see `feathers.controls.ITextControl.baseline`
+	**/
+	@:flash.property
+	public var baseline(get, never):Float;
+
+	private function get_baseline():Float {
+		if (this.textField == null) {
+			return 0.0;
+		}
+		return this.textField.y + this.textField.getLineMetrics(0).ascent;
 	}
 
 	private var _wordWrap:Bool = false;
@@ -353,6 +368,13 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 		return this._paddingLeft;
 	}
 
+	@:flash.property
+	public var stageFocusTarget(get, never):InteractiveObject;
+
+	private function get_stageFocusTarget():InteractiveObject {
+		return this.textField;
+	}
+
 	private var _actualMinVisibleWidth:Float = 0.0;
 	private var _explicitMinVisibleWidth:Null<Float> = null;
 
@@ -388,7 +410,7 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 		return this._explicitMinVisibleWidth;
 	}
 
-	private var _maxVisibleWidth:Null<Float> = Math.POSITIVE_INFINITY;
+	private var _maxVisibleWidth:Null<Float> = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 
 	/**
 		@see `feathers.controls.supportClasses.IViewPort.maxVisibleWidth`
@@ -478,7 +500,7 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 		return this._explicitMinVisibleHeight;
 	}
 
-	private var _maxVisibleHeight:Null<Float> = Math.POSITIVE_INFINITY;
+	private var _maxVisibleHeight:Null<Float> = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 
 	/**
 		@see `feathers.controls.supportClasses.IViewPort.maxVisibleHeight`
@@ -625,6 +647,23 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 	private var _ignoreTextFieldScroll:Bool = false;
 
 	/**
+		Sets all four padding properties to the same value.
+
+		@see `TextFieldViewPort.paddingTop`
+		@see `TextFieldViewPort.paddingRight`
+		@see `TextFieldViewPort.paddingBottom`
+		@see `TextFieldViewPort.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
+	/**
 		@see `feathers.controls.TextArea.selectRange()`
 	**/
 	public function selectRange(anchorIndex:Int, activeIndex:Int):Void {
@@ -683,9 +722,9 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 	}
 
 	private function measureSelf():Bool {
-		var needsWidth = this.explicitWidth == null;
+		var needsWidth = this._explicitVisibleWidth == null;
 		var needsHeight = this.explicitHeight == null;
-		var needsMinWidth = this.explicitMinWidth == null;
+		var needsMinWidth = this._explicitMinVisibleWidth == null;
 		var needsMinHeight = this.explicitMinHeight == null;
 		var needsMaxWidth = this.explicitMaxWidth == null;
 		var needsMaxHeight = this.explicitMaxHeight == null;
@@ -693,9 +732,12 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 			return false;
 		}
 
-		var newWidth = this.explicitWidth;
+		var newWidth = this._explicitVisibleWidth;
 		if (needsWidth) {
-			newWidth = this._textMeasuredWidth + this._paddingLeft + this._paddingRight;
+			// don't use _textMeasuredWidth because it can't be handled by
+			// BaseScrollContainer's layout algorithm, which assumes that the
+			// size won't get smaller between measurement and layout
+			newWidth = this._paddingLeft + this._paddingRight;
 		}
 
 		var newHeight = this.explicitHeight;
@@ -703,9 +745,10 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 			newHeight = this._textMeasuredHeight + this._paddingTop + this._paddingBottom;
 		}
 
-		var newMinWidth = this.explicitMinWidth;
+		var newMinWidth = this._explicitMinVisibleWidth;
 		if (needsMinWidth) {
-			newMinWidth = this._textMeasuredWidth + this._paddingLeft + this._paddingRight;
+			// don't use _textMeasuredWidth here, as explained above
+			newMinWidth = this._paddingLeft + this._paddingRight;
 		}
 
 		var newMinHeight = this.explicitMinHeight;
@@ -714,12 +757,12 @@ class TextFieldViewPort extends FeathersControl implements IViewPort {
 		}
 		var newMaxWidth = this.explicitMaxWidth;
 		if (needsMaxWidth) {
-			newMaxWidth = Math.POSITIVE_INFINITY;
+			newMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 
 		var newMaxHeight = this.explicitMaxHeight;
 		if (needsMaxHeight) {
-			newMaxHeight = Math.POSITIVE_INFINITY;
+			newMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 
 		return this.saveMeasurements(newWidth, newHeight, newMinWidth, newMinHeight, newMaxWidth, newMaxHeight);

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,33 +10,35 @@ package feathers.controls;
 
 import feathers.data.TreeCollection;
 import feathers.data.TreeNode;
-import massive.munit.Assert;
+import utest.Assert;
+import utest.Test;
 
 @:keep
-class TreeViewTest {
+class TreeViewTest extends Test {
 	private var _treeView:TreeView;
 
-	@Before
-	public function prepare():Void {
+	public function new() {
+		super();
+	}
+
+	public function setup():Void {
 		this._treeView = new TreeView();
 		TestMain.openfl_root.addChild(this._treeView);
 	}
 
-	@After
-	public function cleanup():Void {
+	public function teardown():Void {
 		if (this._treeView.parent != null) {
 			this._treeView.parent.removeChild(this._treeView);
 		}
 		this._treeView = null;
-		Assert.areEqual(0, TestMain.openfl_root.numChildren, "Test cleanup failed to remove all children from the root");
+		Assert.equals(0, TestMain.openfl_root.numChildren, "Test cleanup failed to remove all children from the root");
 	}
 
-	@Test
 	public function testValidateWithNullDataProvider():Void {
 		this._treeView.validateNow();
+		Assert.pass();
 	}
 
-	@Test
 	public function testValidateWithFilledDataProviderAndThenNullDataProvider():Void {
 		this._treeView.dataProvider = new TreeCollection([
 			new TreeNode({text: "Node 1"},
@@ -57,5 +59,6 @@ class TreeViewTest {
 		this._treeView.validateNow();
 		this._treeView.dataProvider = null;
 		this._treeView.validateNow();
+		Assert.pass();
 	}
 }

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -26,6 +26,9 @@ import openfl.geom.Point;
 /**
 	Base class for slider components.
 
+	@event openfl.events.Event.CHANGE Dispatched when `BaseSlider.value`
+	changes.
+
 	@see `feathers.controls.HSlider`
 	@see `feathers.controls.VSlider`
 
@@ -36,6 +39,8 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 	private function new() {
 		super();
 	}
+
+	private var _isDefaultValue = true;
 
 	private var _value:Float = 0.0;
 
@@ -72,17 +77,13 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 	}
 
 	private function set_value(value:Float):Float {
-		if (this._snapInterval != 0.0 && value != this._minimum && value != this._maximum) {
-			value = MathUtil.roundToNearest(value, this._snapInterval);
-		}
-		if (value < this._minimum) {
-			value = this._minimum;
-		} else if (value > this._maximum) {
-			value = this._maximum;
-		}
+		// don't restrict a value that has been passed in from an external
+		// source to the minimum/maximum/snapInterval
+		// assume that the user knows what they are doing
 		if (this._value == value) {
 			return this._value;
 		}
+		this._isDefaultValue = false;
 		this._value = value;
 		this.setInvalid(DATA);
 		if (this.liveDragging || !this._dragging) {
@@ -124,10 +125,6 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			return this._minimum;
 		}
 		this._minimum = value;
-		if (this.initialized && this._value < this._minimum) {
-			// use the setter
-			this.value = this._minimum;
-		}
 		this.setInvalid(DATA);
 		return this._minimum;
 	}
@@ -165,10 +162,6 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			return this._maximum;
 		}
 		this._maximum = value;
-		if (this.initialized && this._value > this._maximum) {
-			// use the setter
-			this.value = this._maximum;
-		}
 		this.setInvalid(DATA);
 		return this._maximum;
 	}
@@ -388,22 +381,37 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 
 	override public function showFocus(show:Bool):Void {
 		super.showFocus(show);
-		if (Std.is(this.thumbSkin, IFocusObject)) {
-			var focusThumb = cast(this.thumbSkin, IFocusObject);
+		if (Std.is(this._currentThumbSkin, IFocusObject)) {
+			var focusThumb = cast(this._currentThumbSkin, IFocusObject);
 			if (focusThumb.focusEnabled) {
 				focusThumb.showFocus(show);
 			}
 		}
 	}
 
+	/**
+		Applies the `minimum`, `maximum`, and `snapInterval` restrictions to the
+		current `value`.
+
+		Because it's possible to set `value` to a numeric value that is outside
+		the allowed range, or to a value that has not been snapped to the
+		interval, this method may be called to apply the restrictions manually.
+
+		@since 1.0.0
+	**/
+	public function applyValueRestrictions():Void {
+		this.value = this.restrictValue(this._value);
+	}
+
 	override private function initialize():Void {
 		super.initialize();
-		if (this._value < this._minimum) {
+		// if the user hasn't changed the value, automatically restrict it based
+		// on things like minimum, maximum, and snapInterval
+		// if the user has changed the value, assume that they know what they're
+		// doing and don't want hand holding
+		if (this._isDefaultValue) {
 			// use the setter
-			this.value = this._minimum;
-		} else if (this._value > this._maximum) {
-			// use the setter
-			this.value = this._maximum;
+			this.value = this.restrictValue(this._value);
 		}
 	}
 
@@ -418,7 +426,7 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 			this.refreshSecondaryTrack();
 		}
 
-		if (stateInvalid) {
+		if (stateInvalid || stylesInvalid) {
 			this.refreshEnabled();
 		}
 
@@ -532,19 +540,19 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 	}
 
 	private function refreshEnabled():Void {
-		if (Std.is(this.thumbSkin, IUIControl)) {
-			cast(this.thumbSkin, IUIControl).enabled = this._enabled;
+		if (Std.is(this._currentThumbSkin, IUIControl)) {
+			cast(this._currentThumbSkin, IUIControl).enabled = this._enabled;
 		}
-		if (Std.is(this.trackSkin, IUIControl)) {
-			cast(this.trackSkin, IUIControl).enabled = this._enabled;
+		if (Std.is(this._currentTrackSkin, IUIControl)) {
+			cast(this._currentTrackSkin, IUIControl).enabled = this._enabled;
 		}
-		if (Std.is(this.secondaryTrackSkin, IUIControl)) {
-			cast(this.secondaryTrackSkin, IUIControl).enabled = this._enabled;
+		if (Std.is(this._currentSecondaryTrackSkin, IUIControl)) {
+			cast(this._currentSecondaryTrackSkin, IUIControl).enabled = this._enabled;
 		}
 	}
 
 	private function layoutContent():Void {
-		if (this.trackSkin != null && this.secondaryTrackSkin != null) {
+		if (this._currentTrackSkin != null && this._currentSecondaryTrackSkin != null) {
 			this.layoutSplitTrack();
 		} else {
 			this.layoutSingleTrack();
@@ -564,17 +572,29 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		throw new TypeError("Missing override for 'layoutThumb' in type " + Type.getClassName(Type.getClass(this)));
 	}
 
-	private function normalizeValue():Float {
-		var normalized = 1.0;
+	private function normalizeValue(value:Float):Float {
+		var normalized = 0.0;
 		if (this._minimum != this._maximum) {
-			normalized = (this._value - this._minimum) / (this._maximum - this._minimum);
+			normalized = (value - this._minimum) / (this._maximum - this._minimum);
 			if (normalized < 0.0) {
 				normalized = 0.0;
-			} else if (normalized > 1) {
+			} else if (normalized > 1.0) {
 				normalized = 1.0;
 			}
 		}
 		return normalized;
+	}
+
+	private function restrictValue(value:Float):Float {
+		if (this._snapInterval != 0.0 && value != this._minimum && value != this._maximum) {
+			value = MathUtil.roundToNearest(value, this._snapInterval);
+		}
+		if (value < this._minimum) {
+			value = this._minimum;
+		} else if (value > this._maximum) {
+			value = this._maximum;
+		}
+		return value;
 	}
 
 	private function valueToLocation(value:Float):Float {
@@ -585,7 +605,7 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		throw new TypeError("Missing override for 'locationToValue' in type " + Type.getClassName(Type.getClass(this)));
 	}
 
-	private function saveThumbStart(location:Point):Void {
+	private function saveThumbStart(x:Float, y:Float):Void {
 		throw new TypeError("Missing override for 'saveThumbStart' in type " + Type.getClassName(Type.getClass(this)));
 	}
 
@@ -603,21 +623,18 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, thumbSkin_stage_mouseMoveHandler, false, 0, true);
 		this.stage.addEventListener(MouseEvent.MOUSE_UP, thumbSkin_stage_mouseUpHandler, false, 0, true);
 
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
-
-		this._thumbStartX = this.thumbSkin.x;
-		this._thumbStartY = this.thumbSkin.y;
-		this._pointerStartX = location.x;
-		this._pointerStartY = location.y;
+		this._thumbStartX = this._currentThumbSkin.x;
+		this._thumbStartY = this._currentThumbSkin.y;
+		this._pointerStartX = this.mouseX;
+		this._pointerStartY = this.mouseY;
 		this._dragging = true;
 	}
 
 	private function thumbSkin_stage_mouseMoveHandler(event:MouseEvent):Void {
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
+		var newValue = this.locationToValue(this.mouseX, this.mouseY);
+		newValue = this.restrictValue(newValue);
 		// use the setter
-		this.value = this.locationToValue(location.x, location.y);
+		this.value = newValue;
 	}
 
 	private function thumbSkin_stage_mouseUpHandler(event:MouseEvent):Void {
@@ -643,23 +660,21 @@ class BaseSlider extends FeathersControl implements IRange implements IFocusObje
 		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, trackSkin_stage_mouseMoveHandler, false, 0, true);
 		this.stage.addEventListener(MouseEvent.MOUSE_UP, trackSkin_stage_mouseUpHandler, false, 0, true);
 
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
-
-		this.saveThumbStart(location);
-		this._pointerStartX = location.x;
-		this._pointerStartY = location.y;
+		this.saveThumbStart(this.mouseX, this.mouseY);
+		this._pointerStartX = this.mouseX;
+		this._pointerStartY = this.mouseY;
 		this._dragging = true;
+		var newValue = this.locationToValue(this.mouseX, this.mouseY);
+		newValue = this.restrictValue(newValue);
 		// use the setter
-		this.value = this.locationToValue(location.x, location.y);
+		this.value = newValue;
 	}
 
 	private function trackSkin_stage_mouseMoveHandler(event:MouseEvent):Void {
-		var location = new Point(event.stageX, event.stageY);
-		location = this.globalToLocal(location);
-
+		var newValue = this.locationToValue(this.mouseX, this.mouseY);
+		newValue = this.restrictValue(newValue);
 		// use the setter
-		this.value = this.locationToValue(location.x, location.y);
+		this.value = newValue;
 	}
 
 	private function trackSkin_stage_mouseUpHandler(event:MouseEvent):Void {

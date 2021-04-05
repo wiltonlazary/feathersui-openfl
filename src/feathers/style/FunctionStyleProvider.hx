@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -28,6 +28,10 @@ import openfl.events.EventDispatcher;
 	});
 	this.addChild(button);
 	```
+
+	@event feathers.events.StyleProviderEvent.STYLES_CHANGE Dispatched when the
+	styles have changed, and style objects should request for their styles to be
+	re-applied.
 
 	@see [Styling and skinning Feathers UI components](https://feathersui.com/learn/haxe-openfl/styling-and-skinning/)
 

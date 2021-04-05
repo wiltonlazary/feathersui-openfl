@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -48,7 +48,7 @@ class SteelPopUpListViewStyles {
 				theme.styleProvider.getStyleFunction(Button, null)(button);
 
 				button.horizontalAlign = LEFT;
-				button.gap = Math.POSITIVE_INFINITY;
+				button.gap = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 				button.minGap = 6.0;
 
 				if (button.icon == null) {

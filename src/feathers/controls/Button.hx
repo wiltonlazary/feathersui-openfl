@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -97,10 +97,12 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?text:String) {
 		initializeButtonTheme();
 
 		super();
+
+		this.text = text;
 
 		this.tabEnabled = true;
 		this.tabChildren = false;
@@ -149,6 +151,19 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		this._text = value;
 		this.setInvalid(DATA);
 		return this._text;
+	}
+
+	/**
+		@see `feathers.controls.ITextControl.baseline`
+	**/
+	@:flash.property
+	public var baseline(get, never):Float;
+
+	private function get_baseline():Float {
+		if (this.textField == null) {
+			return 0.0;
+		}
+		return this.textField.y + this.textField.getLineMetrics(0).ascent;
 	}
 
 	/**
@@ -587,6 +602,23 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		this.setInvalid(STYLES);
 	}
 
+	/**
+		Sets all four padding properties to the same value.
+
+		@see `Button.paddingTop`
+		@see `Button.paddingRight`
+		@see `Button.paddingBottom`
+		@see `Button.paddingLeft`
+
+		@since 1.0.0
+	**/
+	public function setPadding(value:Float):Void {
+		this.paddingTop = value;
+		this.paddingRight = value;
+		this.paddingBottom = value;
+		this.paddingLeft = value;
+	}
+
 	private function initializeButtonTheme():Void {
 		SteelButtonStyles.initialize();
 	}
@@ -658,15 +690,11 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			cast(this._currentIcon, IValidating).validateNow();
 		}
 
-		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
-			adjustedGap = this.minGap;
-		}
-
 		var newWidth = this.explicitWidth;
 		if (needsWidth) {
 			newWidth = this.measureContentWidth();
 			newWidth += this.paddingLeft + this.paddingRight;
+
 			if (this._currentBackgroundSkin != null) {
 				newWidth = Math.max(this._currentBackgroundSkin.width, newWidth);
 			}
@@ -709,7 +737,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxWidth = this._backgroundSkinMeasurements.maxWidth;
 			} else {
-				newMaxWidth = Math.POSITIVE_INFINITY;
+				newMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -720,7 +748,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMaxHeight = this._backgroundSkinMeasurements.maxHeight;
 			} else {
-				newMaxHeight = Math.POSITIVE_INFINITY;
+				newMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 			}
 		}
 
@@ -729,7 +757,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 	private function measureContentWidth():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var contentWidth = this._text != null ? this._textMeasuredWidth : 0.0;
@@ -748,7 +777,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 	private function measureContentHeight():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 
@@ -768,7 +798,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 	private function measureContentMinWidth():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var contentMinWidth = this._text != null ? this._textMeasuredWidth : 0.0;
@@ -787,7 +818,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 	private function measureContentMinHeight():Float {
 		var adjustedGap = this.gap;
-		if (adjustedGap == Math.POSITIVE_INFINITY) {
+		// Math.POSITIVE_INFINITY bug workaround
+		if (adjustedGap == (1.0 / 0.0)) {
 			adjustedGap = this.minGap;
 		}
 		var contentMinHeight = this._text != null ? this._textMeasuredHeight : 0.0;
@@ -924,7 +956,7 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		calculatedHeight -= (this.paddingTop + this.paddingBottom);
 		if (this._currentIcon != null) {
 			var adjustedGap = this.gap;
-			if (adjustedGap == Math.POSITIVE_INFINITY) {
+			if (adjustedGap == (1.0 / 0.0)) {
 				adjustedGap = this.minGap;
 			}
 			if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
@@ -971,7 +1003,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 
 	private function positionTextAndIcon():Void {
 		if (this.iconPosition == TOP) {
-			if (this.gap == Math.POSITIVE_INFINITY) {
+			// Math.POSITIVE_INFINITY bug workaround
+			if (this.gap == (1.0 / 0.0)) {
 				this._currentIcon.y = this.paddingTop;
 				this.textField.y = this.actualHeight - this.paddingBottom - this.textField.height;
 			} else {
@@ -983,7 +1016,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 				this._currentIcon.y = this.textField.y - this._currentIcon.height - this.gap;
 			}
 		} else if (this.iconPosition == RIGHT) {
-			if (this.gap == Math.POSITIVE_INFINITY) {
+			// Math.POSITIVE_INFINITY bug workaround
+			if (this.gap == (1.0 / 0.0)) {
 				this.textField.x = this.paddingLeft;
 				this._currentIcon.x = this.actualWidth - this.paddingRight - this._currentIcon.width;
 			} else {
@@ -995,7 +1029,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 				this._currentIcon.x = this.textField.x + this.textField.width + this.gap;
 			}
 		} else if (this.iconPosition == BOTTOM) {
-			if (this.gap == Math.POSITIVE_INFINITY) {
+			// Math.POSITIVE_INFINITY bug workaround
+			if (this.gap == (1.0 / 0.0)) {
 				this.textField.y = this.paddingTop;
 				this._currentIcon.y = this.actualHeight - this.paddingBottom - this._currentIcon.height;
 			} else {
@@ -1007,7 +1042,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 				this._currentIcon.y = this.textField.y + this.textField.height + this.gap;
 			}
 		} else if (this.iconPosition == LEFT) {
-			if (this.gap == Math.POSITIVE_INFINITY) {
+			// Math.POSITIVE_INFINITY bug workaround
+			if (this.gap == (1.0 / 0.0)) {
 				this._currentIcon.x = this.paddingLeft;
 				this.textField.x = this.actualWidth - this.paddingRight - this.textField.width;
 			} else {
@@ -1103,6 +1139,8 @@ class Button extends BasicButton implements ITextControl implements IFocusObject
 		if (event.keyCode != Keyboard.SPACE && event.keyCode != Keyboard.ENTER) {
 			return;
 		}
+		// ensure that other components cannot use this key event
+		event.preventDefault();
 		this.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
 	}
 

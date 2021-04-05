@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -30,6 +30,12 @@ import openfl.ui.Multitouch;
 /**
 	Utility that provides touch and mouse wheel scrolling capabilities for any
 	interactive display object.
+
+	@event feathers.events.ScrollEvent.SCROLL
+
+	@event feathers.events.ScrollEvent.SCROLL_START
+
+	@event feathers.events.ScrollEvent.SCROLL_COMPLETE
 
 	@since 1.0.0
 **/
@@ -789,31 +795,35 @@ class Scroller extends EventDispatcher {
 	}
 
 	private function calculateMinAndMax():Void {
+		var oldMinScrollX = this._minScrollX;
 		var oldMaxScrollX = this._maxScrollX;
+		var oldMinScrollY = this._minScrollY;
 		var oldMaxScrollY = this._maxScrollY;
 		this._minScrollX = 0.0;
 		this._minScrollY = 0.0;
 		this._maxScrollX = Math.max(this._contentWidth, this._visibleWidth) - this._visibleWidth;
 		this._maxScrollY = Math.max(this._contentHeight, this._visibleHeight) - this._visibleHeight;
-		if (oldMaxScrollX != this._maxScrollX) {
+		if (oldMinScrollX != this._minScrollX || oldMaxScrollX != this._maxScrollX) {
 			this.refreshAnimateScrollXEndRatio();
 		}
-		if (oldMaxScrollY != this._maxScrollY) {
+		if (oldMinScrollY != this._minScrollY || oldMaxScrollY != this._maxScrollY) {
 			this.refreshAnimateScrollYEndRatio();
 		}
 		if (!this._scrolling) {
 			var scrollChanged = false;
-			if (this._scrollX < this._minScrollX) {
+			// by checking for the minimum or maximum changing, ensures that
+			// scrollX/Y can be set out of range on purpose
+			if (oldMinScrollX != this._minScrollX && this._scrollX < this._minScrollX) {
 				this._scrollX = this._minScrollX;
 				scrollChanged = true;
-			} else if (this._scrollX > this._maxScrollX) {
+			} else if (oldMaxScrollX != this._maxScrollX && this._scrollX > this._maxScrollX) {
 				this._scrollX = this._maxScrollX;
 				scrollChanged = true;
 			}
-			if (this._scrollY < this._minScrollY) {
+			if (oldMinScrollY != this._minScrollY && this._scrollY < this._minScrollY) {
 				this._scrollY = this._minScrollY;
 				scrollChanged = true;
-			} else if (this._scrollY > this._maxScrollY) {
+			} else if (oldMaxScrollY != this._maxScrollY && this._scrollY > this._maxScrollY) {
 				this._scrollY = this._maxScrollY;
 				scrollChanged = true;
 			}
@@ -1063,20 +1073,31 @@ class Scroller extends EventDispatcher {
 		if (canDragX) {
 			scrollX -= touchOffsetX;
 			if (this.elasticEdges) {
+				var minElasticScrollX = this._minScrollX;
+				if (minElasticScrollX > this.startScrollX) {
+					minElasticScrollX = this.startScrollX;
+				}
+				var maxElasticScrollX = this._maxScrollX;
+				if (maxElasticScrollX < this.startScrollX) {
+					maxElasticScrollX = this.startScrollX;
+				}
 				if (scrollX < this._minScrollX) {
 					if (this._maxScrollX > this._minScrollX || this.forceElasticLeft) {
-						scrollX = scrollX - (scrollX - this._minScrollX) * (1.0 - this.elasticity);
+						scrollX = scrollX - (scrollX - minElasticScrollX) * (1.0 - this.elasticity);
 					} else {
+						// not elastic
 						scrollX = this._minScrollX;
 					}
 				} else if (scrollX > this._maxScrollX) {
 					if (this._maxScrollX > this._minScrollX || this.forceElasticRight) {
-						scrollX = scrollX - (scrollX - this._maxScrollX) * (1.0 - this.elasticity);
+						scrollX = scrollX - (scrollX - maxElasticScrollX) * (1.0 - this.elasticity);
 					} else {
+						// not elastic
 						scrollX = this._maxScrollX;
 					}
 				}
 			} else {
+				// not elastic
 				if (scrollX < this._minScrollX) {
 					scrollX = this._minScrollX;
 				} else if (scrollX > this._maxScrollX) {
@@ -1088,20 +1109,31 @@ class Scroller extends EventDispatcher {
 		if (canDragY) {
 			scrollY -= touchOffsetY;
 			if (this.elasticEdges) {
+				var minElasticScrollY = this._minScrollY;
+				if (minElasticScrollY > this.startScrollY) {
+					minElasticScrollY = this.startScrollY;
+				}
+				var maxElasticScrollY = this._maxScrollY;
+				if (maxElasticScrollY < this.startScrollY) {
+					maxElasticScrollY = this.startScrollY;
+				}
 				if (scrollY < this._minScrollY) {
 					if (this._maxScrollY > this._minScrollY || this.forceElasticTop) {
-						scrollY = scrollY - (scrollY - this._minScrollY) * (1.0 - this.elasticity);
+						scrollY = scrollY - (scrollY - minElasticScrollY) * (1.0 - this.elasticity);
 					} else {
+						// not elastic
 						scrollY = this._minScrollY;
 					}
 				} else if (scrollY > this._maxScrollY) {
 					if (this._maxScrollY > this._minScrollY || this.forceElasticBottom) {
-						scrollY = scrollY - (scrollY - this._maxScrollY) * (1.0 - this.elasticity);
+						scrollY = scrollY - (scrollY - maxElasticScrollY) * (1.0 - this.elasticity);
 					} else {
+						// not elastic
 						scrollY = this._maxScrollY;
 					}
 				}
 			} else {
+				// not elastic
 				if (scrollY < this._minScrollY) {
 					scrollY = this._minScrollY;
 				} else if (scrollY > this._maxScrollY) {

@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -20,6 +20,9 @@ import openfl.events.EventDispatcher;
 /**
 	Controls the selection of two or more IToggle instances where only one may
 	be selected at a time.
+
+	@event openfl.events.Event.CHANGE Dispatched when `ToggleGroup.selectedItem`
+	or `ToggleGroup.selectedIndex` changes.
 
 	@see `feathers.controls.IToggle`
 	@see `feathers.controls.IGroupedToggle`

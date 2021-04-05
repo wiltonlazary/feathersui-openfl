@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -171,10 +171,6 @@ class LayoutGroup extends FeathersControl {
 		group.autoSizeMode = STAGE;
 		```
 
-		Usually defaults to `AutoSizeMode.CONTENT`. However, if this component
-		is the root of the OpenFL display list, defaults to `AutoSizeMode.STAGE`
-		instead.
-
 		@see `feathers.layout.AutoSizeMode.STAGE`
 		@see `feathers.layout.AutoSizeMode.CONTENT`
 
@@ -195,7 +191,7 @@ class LayoutGroup extends FeathersControl {
 		this.setInvalid(SIZE);
 		if (this.stage != null) {
 			if (this._autoSizeMode == STAGE) {
-				this.stage.addEventListener(Event.RESIZE, layoutGroup_stage_resizeHandler);
+				this.stage.addEventListener(Event.RESIZE, layoutGroup_stage_resizeHandler, false, 0, true);
 				this.addEventListener(Event.REMOVED_FROM_STAGE, layoutGroup_removedFromStageHandler);
 			} else {
 				this.stage.removeEventListener(Event.RESIZE, layoutGroup_stage_resizeHandler);
@@ -226,11 +222,11 @@ class LayoutGroup extends FeathersControl {
 		if (oldIndex >= 0) {
 			this.items.remove(child);
 		}
-		index = this.getPrivateIndexForPublicIndex(index);
+		var privateIndex = this.getPrivateIndexForPublicIndex(index);
 		// insert into the array before adding as a child, so that display list
 		// APIs work in an Event.ADDED listener
 		this.items.insert(index, child);
-		var result = this._addChildAt(child, index);
+		var result = this._addChildAt(child, privateIndex);
 		// add listeners or access properties after adding a child
 		// because adding the child may result in better errors (like for null)
 		child.addEventListener(Event.RESIZE, layoutGroup_child_resizeHandler);
@@ -466,22 +462,7 @@ class LayoutGroup extends FeathersControl {
 			return;
 		}
 		this.removeCurrentBackgroundSkin(oldSkin);
-		if (this._currentBackgroundSkin == null) {
-			this._backgroundSkinMeasurements = null;
-			return;
-		}
-		if (Std.is(this._currentBackgroundSkin, IUIControl)) {
-			cast(this._currentBackgroundSkin, IUIControl).initializeNow();
-		}
-		if (this._backgroundSkinMeasurements == null) {
-			this._backgroundSkinMeasurements = new Measurements(this._currentBackgroundSkin);
-		} else {
-			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
-		}
-		if (Std.is(this._currentBackgroundSkin, IProgrammaticSkin)) {
-			cast(this._currentBackgroundSkin, IProgrammaticSkin).uiContext = this;
-		}
-		this._addChildAt(this._currentBackgroundSkin, 0);
+		this.addCurrentBackgroundSkin(this._currentBackgroundSkin);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
@@ -489,6 +470,25 @@ class LayoutGroup extends FeathersControl {
 			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
+	}
+
+	private function addCurrentBackgroundSkin(skin:DisplayObject):Void {
+		if (skin == null) {
+			this._backgroundSkinMeasurements = null;
+			return;
+		}
+		if (Std.is(skin, IUIControl)) {
+			cast(skin, IUIControl).initializeNow();
+		}
+		if (this._backgroundSkinMeasurements == null) {
+			this._backgroundSkinMeasurements = new Measurements(skin);
+		} else {
+			this._backgroundSkinMeasurements.save(skin);
+		}
+		if (Std.is(skin, IProgrammaticSkin)) {
+			cast(skin, IProgrammaticSkin).uiContext = this;
+		}
+		this._addChildAt(skin, 0);
 	}
 
 	private function removeCurrentBackgroundSkin(skin:DisplayObject):Void {
@@ -554,11 +554,11 @@ class LayoutGroup extends FeathersControl {
 		}
 		var viewPortMaxWidth = this.explicitMaxWidth;
 		if (needsMaxWidth) {
-			viewPortMaxWidth = Math.POSITIVE_INFINITY;
+			viewPortMaxWidth = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		var viewPortMaxHeight = this.explicitMaxHeight;
 		if (needsMaxHeight) {
-			viewPortMaxHeight = Math.POSITIVE_INFINITY;
+			viewPortMaxHeight = 1.0 / 0.0; // Math.POSITIVE_INFINITY bug workaround
 		}
 		if (this._backgroundSkinMeasurements != null) {
 			// because the layout might need it, we account for the
@@ -592,6 +592,7 @@ class LayoutGroup extends FeathersControl {
 	private function handleCustomLayout():Void {
 		var oldIgnoreChildChanges = this._ignoreChildChanges;
 		this._ignoreChildChanges = true;
+		this._layoutResult.reset();
 		this._currentLayout.layout(this.items, this._layoutMeasurements, this._layoutResult);
 		this._ignoreChildChanges = oldIgnoreChildChanges;
 	}
@@ -696,7 +697,7 @@ class LayoutGroup extends FeathersControl {
 			this.setInvalid(SIZE);
 
 			this.addEventListener(Event.REMOVED_FROM_STAGE, layoutGroup_removedFromStageHandler);
-			this.stage.addEventListener(Event.RESIZE, layoutGroup_stage_resizeHandler);
+			this.stage.addEventListener(Event.RESIZE, layoutGroup_stage_resizeHandler, false, 0, true);
 		}
 	}
 

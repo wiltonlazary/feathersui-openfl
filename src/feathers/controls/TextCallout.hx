@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -57,8 +57,7 @@ class TextCallout extends Callout implements ITextControl {
 		@since 1.0.0
 	**/
 	public static function show(text:String, origin:DisplayObject, ?supportedPositions:RelativePositions, modal:Bool = true):TextCallout {
-		var callout = new TextCallout();
-		callout.text = text;
+		var callout = new TextCallout(text);
 		return cast(Callout.showCallout(callout, origin, supportedPositions, modal), TextCallout);
 	}
 
@@ -74,9 +73,11 @@ class TextCallout extends Callout implements ITextControl {
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(text:String = "") {
 		initializeTextCalloutTheme();
 		super();
+
+		this.text = text;
 	}
 
 	private var label:Label;
@@ -114,6 +115,19 @@ class TextCallout extends Callout implements ITextControl {
 	}
 
 	/**
+		@see `feathers.controls.ITextControl.baseline`
+	**/
+	@:flash.property
+	public var baseline(get, never):Float;
+
+	private function get_baseline():Float {
+		if (this.label == null) {
+			return 0.0;
+		}
+		return this.label.y + this.label.baseline;
+	}
+
+	/**
 		The font styles used to render the text callout's text.
 
 		In the following example, the text callout's formatting is customized:
@@ -129,7 +143,7 @@ class TextCallout extends Callout implements ITextControl {
 		@since 1.0.0
 	**/
 	@:style
-	public var textFormat:TextFormat = null;
+	public var textFormat:AbstractTextFormat = null;
 
 	/**
 		Determines if an embedded font is used or not.
@@ -164,7 +178,7 @@ class TextCallout extends Callout implements ITextControl {
 		@since 1.0.0
 	**/
 	@:style
-	public var disabledTextFormat:TextFormat = null;
+	public var disabledTextFormat:AbstractTextFormat = null;
 
 	private function initializeTextCalloutTheme():Void {
 		SteelTextCalloutStyles.initialize();

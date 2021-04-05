@@ -1,6 +1,6 @@
 /*
 	Feathers UI
-	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+	Copyright 2021 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -14,6 +14,7 @@ import feathers.controls.dataRenderers.TreeViewItemRenderer;
 import feathers.controls.supportClasses.AdvancedLayoutViewPort;
 import feathers.controls.supportClasses.BaseScrollContainer;
 import feathers.core.IDataSelector;
+import feathers.core.InvalidationFlag;
 import feathers.core.IOpenCloseToggle;
 import feathers.core.ITextControl;
 import feathers.core.IUIControl;
@@ -97,6 +98,20 @@ import openfl._internal.utils.ObjectPool;
 
 	this.addChild(treeView);
 	```
+		
+	@event openfl.events.Event.CHANGE Dispatched when either
+	`TreeView.selectedItem` or `TreeView.selectedLocation` changes.
+
+	@event feathers.events.TreeViewEvent.ITEM_TRIGGER Dispatched when the user
+	taps or clicks an item renderer in the tree view. The pointer must remain
+	within the bounds of the item renderer on release, and the tree view cannot
+	scroll before release, or the gesture will be ignored.
+
+	@event feathers.events.TreeViewEvent.BRANCH_OPEN Dispatched when a branch
+	is opened.
+
+	@event feathers.events.TreeViewEvent.BRANCH_CLOSE Dispatched when a branch
+	is closed.
 
 	@see [Tutorial: How to use the TreeView component](https://feathersui.com/learn/haxe-openfl/tree-view/)
 
@@ -145,6 +160,20 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 	**/
 	public static final VARIANT_BORDER = "border";
 
+	/**
+		The variant used to style the tree view's item renderers in a theme.
+
+		To override this default variant, set the
+		`TreeView.customItemRendererVariant` property.
+
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@see `TreeView.customItemRendererVariant`
+
+		@since 1.0.0
+	**/
+	public static final CHILD_VARIANT_ITEM_RENDERER = "treeView_itemRenderer";
+
 	private static final INVALIDATION_FLAG_ITEM_RENDERER_FACTORY = InvalidationFlag.CUSTOM("itemRendererFactory");
 
 	private static function defaultUpdateItemRenderer(itemRenderer:DisplayObject, state:TreeViewItemState):Void {
@@ -166,10 +195,12 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 
 		@since 1.0.0
 	**/
-	public function new() {
+	public function new(?dataProvider:IHierarchicalCollection<Dynamic>) {
 		initializeTreeViewTheme();
 
 		super();
+
+		this.dataProvider = dataProvider;
 
 		this.tabEnabled = true;
 		this.focusRect = null;
@@ -191,10 +222,18 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 
 	private var openBranches:Array<Dynamic> = [];
 
-	private var _dataProvider:IHierarchicalCollection<Dynamic> = null;
+	private var _dataProvider:IHierarchicalCollection<Dynamic>;
 
 	/**
 		The collection of data displayed by the tree view.
+
+		Items in the collection must be class instances or anonymous structures.
+		Do not add primitive values (such as strings, booleans, or numeric
+		values) directly to the collection.
+
+		Additionally, all items in the collection must be unique object
+		instances. Do not add the same instance to the collection more than
+		once because a runtime exception will be thrown.
 
 		The following example passes in a data provider and tells the item
 		renderer how to interpret the data:
@@ -394,7 +433,13 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 	private var _previousCustomItemRendererVariant:String = null;
 
 	/**
-		A custom variant to set on all item renderers.
+		A custom variant to set on all item renderers, instead of
+		`TreeView.CHILD_VARIANT_ITEM_RENDERER`.
+
+		The `customItemRendererVariant` will be not be used if the result of
+		`itemRendererRecycler.create()` already has a variant set.
+
+		@see `TreeView.CHILD_VARIANT_ITEM_RENDERER`
 
 		@since 1.0.0
 	**/
@@ -689,6 +734,26 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 			return null;
 		}
 		return state.data;
+	}
+
+	/**
+		Returns the current item renderer used to render the item at the
+		specified location in the data provider. May return `null` if an item
+		doesn't currently have an item renderer.
+
+		**Note:** Most tree views use "virtual" layouts, which means that only
+		the currently-visible subset of items will have an item renderer. As the
+		tree view scrolls, the items with item renderers will change, and item
+		renderers may even be re-used to display different items.
+
+		@since 1.0.0
+	**/
+	public function locationToItemRenderer(location:Array<Int>):DisplayObject {
+		if (this._dataProvider == null || !this.isValidLocation(location)) {
+			return null;
+		}
+		var item = this._dataProvider.get(location);
+		return this.dataToItemRenderer.get(item);
 	}
 
 	private var _pendingScrollLocation:Array<Int> = null;
@@ -1079,12 +1144,20 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 			itemRenderer = storage.itemRendererRecycler.create();
 			if (this.customItemRendererVariant != null && Std.is(itemRenderer, IVariantStyleObject)) {
 				var variantItemRenderer = cast(itemRenderer, IVariantStyleObject);
+				var variant = this.customItemRendererVariant != null ? this.customItemRendererVariant : CHILD_VARIANT_ITEM_RENDERER;
 				if (variantItemRenderer.variant == null) {
-					variantItemRenderer.variant = this.customItemRendererVariant;
+					variantItemRenderer.variant = variant;
 				}
 			}
 			if (storage.measurements == null) {
 				storage.measurements = new Measurements(itemRenderer);
+			}
+			// for consistency, initialize before passing to the recycler's
+			// update function. plus, this ensures that custom item renderers
+			// correctly handle property changes in update() instead of trying
+			// to access them too early in initialize().
+			if (Std.is(itemRenderer, IUIControl)) {
+				cast(itemRenderer, IUIControl).initializeNow();
 			}
 		} else {
 			itemRenderer = storage.inactiveItemRenderers.shift();
@@ -1299,6 +1372,9 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 	}
 
 	private function navigateWithKeyboard(event:KeyboardEvent):Void {
+		if (event.isDefaultPrevented()) {
+			return;
+		}
 		if (this._layoutItems.length == 0) {
 			return;
 		}
@@ -1330,7 +1406,7 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 		} else if (result >= this._layoutItems.length) {
 			result = this._layoutItems.length - 1;
 		}
-		event.stopPropagation();
+		event.preventDefault();
 		// use the setter
 		this.selectedLocation = this.displayIndexToLocation(result);
 		if (this._selectedLocation != null) {
@@ -1393,6 +1469,10 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 	}
 
 	override private function baseScrollContainer_keyDownHandler(event:KeyboardEvent):Void {
+		if (!this._selectable) {
+			super.baseScrollContainer_keyDownHandler(event);
+			return;
+		}
 		if (!this._enabled || event.isDefaultPrevented()) {
 			return;
 		}
@@ -1406,13 +1486,27 @@ class TreeView extends BaseScrollContainer implements IDataSelector<Dynamic> {
 		}
 
 		if (this._selectedLocation != null && event.keyCode == Keyboard.SPACE) {
-			event.stopPropagation();
 			if (this._dataProvider.isBranch(this._selectedItem)) {
+				event.preventDefault();
 				this.toggleBranch(this._selectedItem, this.openBranches.indexOf(this._selectedItem) == -1);
 			}
 			return;
 		}
 		this.navigateWithKeyboard(event);
+	}
+
+	private function isValidLocation(location:Array<Int>):Bool {
+		var locationOfBranch:Array<Int> = [];
+		for (index in location) {
+			if (index < 0) {
+				return false;
+			}
+			if (index >= this._dataProvider.getLength(locationOfBranch)) {
+				return false;
+			}
+			locationOfBranch.push(index);
+		}
+		return true;
 	}
 
 	private function treeView_itemRenderer_touchTapHandler(event:TouchEvent):Void {
